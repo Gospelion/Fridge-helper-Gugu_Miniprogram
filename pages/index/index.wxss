@@ -1,0 +1,419 @@
+.bg-image {
+  position: fixed; /* 固定定位，覆盖整个屏幕 */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1; /* 确保它在内容下方 */
+  pointer-events: none; /* 防止阻挡点击事件 */
+}
+
+.page {
+  padding: 20rpx;
+  background-color: rgba(245, 247, 250, 0);
+  min-height: 100vh;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+}
+
+/* 通用卡片容器 */
+.card {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+/* --- 推荐卡片 --- */
+.recommend-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16rpx;
+  }
+  .recommend-title-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+  .recommend-title {
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #333;
+  }
+  .recommend-sub {
+    font-size: 24rpx;
+    color: #999;
+    margin-top: 4rpx;
+  }
+  .recommend-refresh {
+    width: 80rpx;
+    height: 80rpx;
+    margin-left: 0rpx;
+  }
+.recommend-list {
+    display: flex;
+    justify-content: space-between;
+    gap: 16rpx;
+  }
+  .recommend-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .recommend-body {
+    background-color: #f9f9f9;
+    padding: 12rpx 20rpx;
+    border-radius: 12rpx;
+    margin-bottom: 14rpx;
+    width: 100%;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 10;
+    cursor: pointer;
+  }
+  .recommend-body:active {
+    background-color: #e9e9e9;
+    transform: scale(0.98);
+    transition: all 0.1s;
+  }
+  .recommend-body-hover {
+    background-color: #e9e9e9;
+    transform: scale(0.98);
+    transition: all 0.1s;
+  }
+.recipe-name {
+  display: block;
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #e67e22;
+  margin-bottom: 8rpx;
+}
+.recipe-meta {
+  display: block;
+  font-size: 24rpx;
+  color: #666;
+  margin-top: 4rpx;
+}
+.recommend-btn-wrapper {
+  display: flex;
+  justify-content: center;
+}
+.recommend-btn {
+  margin: 0 !important;
+  padding: 12rpx 32rpx;
+  line-height: normal;
+  background-color: #333 !important;
+  font-weight: bold;
+}
+.recommend-btn::after {
+  border: none;
+}
+.recommend-empty {
+  text-align: center;
+  padding: 20rpx 0;
+}
+.empty-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 12rpx;
+}
+.empty-desc {
+  display: block;
+  font-size: 28rpx;
+  color: #888;
+  margin-bottom: 16rpx;
+}
+
+/* --- 数据看板 --- */
+.dashboard-row {
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+.dashboard-item {
+  flex: 1;
+  border-right: 2rpx solid #ccccccec;
+}
+.dashboard-item:last-child {
+  border-right: none;
+}
+.dashboard-label {
+  display: block;
+  font-size: 22rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+.dashboard-value {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+.dashboard-warning .dashboard-value { color: #f39c12; }
+.dashboard-expired .dashboard-value { color: #e74c3c; }
+
+/* --- 库存列表与筛选器 --- */
+.inventory-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+.inventory-title {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+}
+.inventory-count {
+  font-size: 24rpx;
+  color: #999;
+}
+
+/* 筛选器样式 */
+.filter-bar {
+  width: 100%;
+  white-space: nowrap;
+  margin-bottom: 20rpx;
+  padding-bottom: 10rpx; /* 给滚动条留点空间 */
+}
+.filter-content {
+  display: inline-flex; /* 关键：让标签横向排列 */
+}
+.filter-tag {
+  display: inline-block;
+  padding: 10rpx 24rpx;
+  margin-right: 16rpx;
+  background-color: #f0f0f0;
+  border-radius: 30rpx;
+  font-size: 26rpx;
+  color: #666;
+  transition: all 0.3s;
+}
+.filter-tag-active {
+  background-color: #333;
+  color: #fff;
+  box-shadow: 0 4rpx 8rpx rgba(0,0,0,0.2);
+}
+.inventory-names-wrapper {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 16rpx;
+  line-height: 1.5;
+}
+
+/* --- 核心：食材卡片流 (左滑容器) --- */
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx; /* 卡片之间的间距 */
+}
+
+/* --- 核心修复：左滑容器样式 --- */
+
+/* --- 左滑组件核心样式修复 --- */
+
+/* 1. 可视窗口：固定宽度，隐藏溢出 */
+.swipe-area {
+  width: 100%; /* 占据父容器宽度 */
+  height: auto;
+  min-height: 140rpx;
+  position: relative;
+  overflow: hidden; /* 关键：切掉超出部分（删除按钮） */
+  background-color: transparent;
+}
+
+/* 2. 滑动主体：使用 transform 进行硬件加速 */
+.swipe-view {
+  width: auto; 
+  height: 100%;
+  display: block;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+  /* 关键优化：启用 GPU 硬件加速，减少重排 */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* 3. 内部容器：横向排列 [卡片] + [删除按钮] */
+.swipe-inner {
+  display: flex; /* 使用 Flex 布局横向排列 */
+  width: max-content; /* 关键：宽度由内容决定 (卡片宽+按钮宽) */
+  height: 100%;
+  background-color: transparent;
+}
+
+/* 4. 食材卡片：严格限制为屏幕可用宽度 + 硬件加速 */
+.ingredient-card {
+  width: calc(100vw - 80rpx); /* 减去页面左右 padding */
+  height: auto;
+  min-height: 140rpx;
+  box-sizing: border-box;
+  padding: 16rpx 24rpx;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  
+  border-radius: 16rpx;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.08);
+  position: relative;
+  z-index: 2;
+  
+  /* 关键优化：启用 GPU 硬件加速，减少重排 */
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* 5. 删除按钮：固定宽度，禁止压缩 */
+.swipe-delete {
+  width: 160rpx; /* 固定删除按钮宽度 */
+  height: 100%;
+  flex-shrink: 0; /* 禁止压缩 */
+  background-color: #ff4d4f;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: bold;
+  border-radius: 0 16rpx 16rpx 0; /* 右侧圆角可选，看设计需求 */
+}
+
+/* --- 其他原有样式保持不变 --- */
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  /* 确保列表容器不干扰内部宽度 */
+  width: 100%; 
+}
+
+/* 针对特定机型的修复：如果 100vw 不行，强制指定宽度 */
+/* 假设你的项目设计稿宽度是 750rpx，减去左右 padding 可能需要微调，但通常 100vw 有效 */
+/* 如果发现问题依旧，请尝试取消下面的注释并调整数值 */
+/* 
+.ingredient-card {
+  width: 710rpx; // 750 - 左右边距
+} 
+*/
+
+/* 分类背景色定义 (JS 中动态绑定的类) */
+.bg-agri { background-color: #FFF4E6; } /* 农产品 - 淡橘 */
+.bg-veg { background-color: #F0F9EB; }  /* 蔬菜 - 淡绿 */
+.bg-fruit { background-color: #FFF0F5; } /* 水果 - 淡粉 */
+.bg-other { background-color: #E6F7FF; } /* 其他 - 淡蓝 */
+
+.ingredient-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+.ingredient-name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+.ingredient-quantity {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #555;
+  background: rgba(255,255,255,0.6);
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
+
+.ingredient-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ingredient-expiry {
+  display: flex;
+  align-items: center;
+  font-size: 24rpx;
+}
+.ingredient-category-tag {
+  font-size: 22rpx;
+  color: #888;
+  background: rgba(255,255,255,0.4);
+  padding: 2rpx 8rpx;
+  border-radius: 4rpx;
+}
+.ingredient-warning-icon {
+  margin-right: 6rpx;
+  font-size: 28rpx;
+}
+.expiry-normal { color: #27ae60; }
+.expiry-warning { color: #f39c12; font-weight: bold; }
+.expiry-urgent { color: #e67e22; font-weight: bold; }
+.expiry-expired { color: #e74c3c; font-weight: bold; }
+
+
+
+
+
+/* 其他原有样式保持不变... */
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 60rpx 0;
+}
+.empty-state-image {
+  width: 200rpx;
+  height: 200rpx;
+  margin-bottom: 20rpx;
+  opacity: 0.6;
+}
+.empty-state-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 12rpx;
+}
+.empty-state-desc {
+  display: block;
+  font-size: 28rpx;
+  color: #888;
+}
+
+/* 悬浮按钮 */
+.fab-wrapper {
+  position: fixed;
+  bottom: 190rpx;  /* 调整位置，在 tabBar 上方 */
+  right: 20rpx;
+  z-index: 999;
+}
+.fab-btn {
+  width: 100rpx !important;
+  height: 100rpx !important;
+  min-width: 100rpx !important;
+  min-height: 100rpx !important;
+  border-radius: 12rpx !important;
+  background-color: #333 !important;
+  color: #fff !important;
+  font-size: 48rpx;
+  line-height: 100rpx;
+  text-align: center;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.fab-btn::after {
+  border: none;
+}

@@ -1,0 +1,22 @@
+{
+  "rules": [
+    {
+      "page": "pages/index/index",
+      "name": "首页",
+      "open": true,
+      "priority": 1
+    },
+    {
+      "page": "pages/add/add",
+      "name": "添加食材",
+      "open": true,
+      "priority": 1
+    },
+    {
+      "page": "pages/diary/diary",
+      "name": "食物日记",
+      "open": true,
+      "priority": 1
+    }
+  ]
+}

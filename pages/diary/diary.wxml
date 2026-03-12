@@ -1,0 +1,134 @@
+<!-- 背景图层 -->
+<image src="/assets/background.jpg" class="bg-image" mode="aspectFill" />
+
+<view class="page">
+  <!-- 发布区域 -->
+  <view class="card publish-card">
+    <view class="section-header">
+      <text class="section-title">记录今日料理</text>
+      <text class="section-sub">选择或填写一道菜名，并上传图片</text>
+    </view>
+
+    <!-- 菜名选择 -->
+    <view class="form-item">
+      <text class="form-label">菜名</text>
+            <view class="picker" bindtap="openRecipeSelector">
+        <text>{{selectedRecipeName || '暂无可选菜谱'}}</text>
+        <text class="picker-arrow">▼</text>
+      </view>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">或自定义菜名</text>
+      <input
+        class="form-input"
+        placeholder="例如：西红柿鸡蛋面（可选）"
+        value="{{customTitle}}"
+        bindinput="onCustomTitleInput"
+      />
+    </view>
+
+    <!-- 图片上传 -->
+    <view class="form-item">
+      <text class="form-label">菜品照片（可选）</text>
+      <view class="image-list">
+        <block wx:for="{{imageList}}" wx:key="*this">
+          <image
+            class="image-item"
+            src="{{item}}"
+            mode="aspectFill"
+            data-index="{{index}}"
+            bindtap="previewImage"
+          ></image>
+        </block>
+        <view class="image-add" bindtap="chooseImage">
+          <text>+</text>
+        </view>
+      </view>
+    </view>
+
+    <button class="btn-primary publish-btn" bindtap="onPublish">
+      完成烹饪并扣减库存
+    </button>
+    <text class="hint-text">
+      默认根据所选菜谱中食材，每种扣减 1 个单位
+    </text>
+  </view>
+
+  <!-- 历史日记列表 -->
+  <view class="card diary-list-card">
+    <view class="section-header">
+      <text class="section-title">历史记录</text>
+      <text class="section-sub">看看你已经做过多少好吃的</text>
+    </view>
+
+    <block wx:if="{{diaryList.length}}">
+      <view class="diary-list">
+        <block wx:for="{{diaryList}}" wx:key="id">
+          <view class="diary-item">
+            <view class="diary-header">
+              <text class="diary-title">{{item.title}}</text>
+              <text class="diary-date">{{item.dateText}}</text>
+            </view>
+            <view class="diary-content">
+              <view class="diary-images" wx:if="{{item.imageList && item.imageList.length}}">
+                <image
+                  wx:for="{{item.imageList}}"
+                  wx:key="*this"
+                  class="diary-image"
+                  src="{{item}}"
+                  mode="aspectFill"
+                  data-index="{{index}}"
+                  data-parentindex="{{index}}"
+                  catchtap="noop"
+                ></image>
+              </view>
+              <view class="diary-meta">
+                <text wx:if="{{item.recipeName}}">
+                  菜谱：{{item.recipeName}}
+                </text>
+                <text wx:if="{{item.usedIngredientsText}}">
+                  消耗：{{item.usedIngredientsText}}
+                </text>
+              </view>
+            </view>
+          </view>
+            </block>
+  </view>
+</block>
+
+<block wx:else>
+  <view class="empty-state">
+    <image
+      class="empty-state-image"
+      src="/assets/empty-fridge.png"
+      mode="aspectFit"
+    ></image>
+    <text class="empty-state-title">还没有记录</text>
+    <text class="empty-state-desc">从今天开始记录你的第一道菜吧</text>
+  </view>
+</block>
+  </view>
+</view>
+
+<!-- 菜名选择器模态框 -->
+<view class="modal-mask {{showRecipeSelector ? 'active' : ''}}" bindtap="closeRecipeSelector"></view>
+<view class="recipe-selector {{showRecipeSelector ? 'active' : ''}}">
+  <view class="recipe-selector-header">
+    <text class="recipe-selector-title">选择菜名</text>
+    <view class="recipe-selector-close" bindtap="closeRecipeSelector">
+      <text>✕</text>
+    </view>
+  </view>
+  <view class="recipe-grid">
+    <block wx:for="{{recipeNames}}" wx:key="*this">
+      <view
+        class="recipe-card {{selectedRecipeIndex === index ? 'selected' : ''}}"
+        bindtap="onRecipeCardTap"
+        data-index="{{index}}"
+      >
+        <text class="recipe-card-name">{{item}}</text>
+      </view>
+    </block>
+  </view>
+</view>

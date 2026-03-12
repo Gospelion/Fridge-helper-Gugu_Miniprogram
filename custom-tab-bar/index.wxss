@@ -1,0 +1,29 @@
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100rpx;
+  background: #ffffff;
+  display: flex;
+  border-top: 1rpx solid #e5e5e5;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-bar-item {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+.tab-text {
+  font-size: 32rpx;  /* 较大的字体 */
+  color: #999999;
+}
+
+.tab-bar-item.active .tab-text {
+  color: #4CAF50;
+  font-weight: 500;
+}
