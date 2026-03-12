@@ -19,7 +19,7 @@
 
     <block wx:if="{{recommendedRecipes.length > 0}}">
       <view class="recommend-list">
-        <view class="recommend-item" wx:for="{{recommendedRecipes}}" wx:key="name">
+        <view class="recommend-item" wx:for="{{recommendedRecipes.slice(0, 2)}}" wx:key="name">
           <view class="recommend-body" bindtap="onRecommendTap" data-name="{{item.name}}" data-ingredients="{{item.ingredientsStr}}" hover-class="recommend-body-hover" hover-start-time="50" hover-stay-time="100">
             <text class="recipe-name">{{item.name}}</text>
             <text class="recipe-meta">难度：{{item.difficulty}}</text>
@@ -31,6 +31,7 @@
               size="mini"
               data-name="{{item.name}}"
               bindtap="goDiaryWithRecipe"
+              catchtap="onRecordTap"
             >
               记录这道菜
             </button>

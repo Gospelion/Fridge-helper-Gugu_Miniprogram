@@ -8,16 +8,22 @@ Page({
     searchKey: '',
     showDeleteMode: false,
     // 用于高亮新添加的食材
-    newlyAddedIds: []
+    newlyAddedIds: [],
+    recommendedRecipes: [],
+    categories: ['全部', '农产品', '蔬菜', '水果', '饮品/其他'],
+    activeCategory: '全部',
+    swipeOffsets: {}
   },
 
   onLoad() {
     storage.initData();
     this.refreshData();
+    this.generateRecommendations();
   },
 
   onShow() {
     this.refreshData();
+    this.generateRecommendations();
     // 检查是否有新添加的食材需要高亮
     this.checkNewlyAddedIngredients();
     // 更新自定义 tabBar 选中状态
@@ -34,17 +40,194 @@ Page({
   checkNewlyAddedIngredients() {
     const result = storage.getNewlyAddedIngredients();
     if (result.shouldHighlight && result.ids.length > 0) {
-      // 将新添加的食材 ID 存储到 data 中，用于 wxml 绑定
       this.setData({
         newlyAddedIds: result.ids
       });
-      // 3 秒后清除高亮标记
       setTimeout(() => {
         this.setData({
           newlyAddedIds: []
         });
       }, 3000);
     }
+  },
+
+  /**
+   * 根据当前库存生成推荐菜谱
+   */
+  generateRecommendations() {
+    const inventory = storage.getInventory();
+    const recipes = storage.getRecipes();
+    
+    // 获取当前库存中的食材名称列表
+    const availableIngredients = inventory.map(item => item.name);
+    
+    if (availableIngredients.length === 0) {
+      this.setData({ recommendedRecipes: [] });
+      return;
+    }
+    
+    // 计算每个菜谱的匹配度
+    const scoredRecipes = recipes.map(recipe => {
+      const matchCount = recipe.ingredients.filter(ing => 
+        availableIngredients.includes(ing)
+      ).length;
+      const totalIngredients = recipe.ingredients.length;
+      const matchRate = matchCount / totalIngredients;
+      
+      return {
+        ...recipe,
+        matchCount,
+        totalIngredients,
+        matchRate,
+        ingredientsText: recipe.ingredients.join('、'),
+        ingredientsStr: JSON.stringify(recipe.ingredients)
+      };
+    });
+    
+    // 筛选出至少能匹配 1 种食材的菜谱
+    const matchableRecipes = scoredRecipes.filter(recipe => recipe.matchCount >= 1);
+    
+    // 按匹配度排序，优先推荐匹配度高的
+    matchableRecipes.sort((a, b) => {
+      if (b.matchRate !== a.matchRate) {
+        return b.matchRate - a.matchRate;
+      }
+      if (b.matchCount !== a.matchCount) {
+        return b.matchCount - a.matchCount;
+      }
+      const difficultyOrder = { '极简': 0, '简单': 1, '中等': 2, '困难': 3 };
+      return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
+    });
+    
+    // 取前 5 个推荐
+    const topRecipes = matchableRecipes.slice(0, 5);
+    
+    this.setData({
+      recommendedRecipes: topRecipes
+    });
+  },
+
+  /**
+   * 刷新推荐菜谱
+   */
+  onRefreshRecommend() {
+    wx.showLoading({ title: '生成中...' });
+    setTimeout(() => {
+      this.generateRecommendations();
+      wx.hideLoading();
+      wx.showToast({
+        title: '已更新推荐',
+        icon: 'success'
+      });
+    }, 300);
+  },
+
+  /**
+   * 跳转到添加食材页面
+   */
+  goAddPage() {
+    wx.navigateTo({
+      url: '/pages/add/add'
+    });
+  },
+
+  /**
+   * 跳转到日记页面并带上菜谱信息
+   */
+  goDiaryWithRecipe(e) {
+    const { name } = e.currentTarget.dataset;
+    wx.navigateTo({
+      url: `/pages/diary/diary?recipeName=${encodeURIComponent(name)}`
+    });
+  },
+
+  /**
+   * 分类筛选
+   */
+  onFilterTap(e) {
+    const { name } = e.currentTarget.dataset;
+    this.setData({
+      activeCategory: name
+    });
+    
+    if (name === '全部') {
+      this.setData({
+        filteredInventory: this.data.inventory
+      });
+    } else {
+      const filtered = this.data.inventory.filter(item => item.category === name);
+      this.setData({
+        filteredInventory: filtered
+      });
+    }
+  },
+
+  /**
+   * 处理滑动变化
+   */
+  onItemSwipeChange(e) {
+    const { id } = e.currentTarget.dataset;
+    const { x } = e.detail;
+    this.setData({
+      [`swipeOffsets[${id}]`]: x
+    });
+  },
+
+  /**
+   * 滑动结束处理
+   */
+  onItemSwipeEnd(e) {
+    const { id } = e.currentTarget.dataset;
+    const { x } = e.detail;
+    const threshold = -60;
+    
+    if (x < threshold) {
+      this.setData({
+        [`swipeOffsets[${id}]`]: -80
+      });
+    } else {
+      this.setData({
+        [`swipeOffsets[${id}]`]: 0
+      });
+    }
+  },
+
+  /**
+   * 点击删除按钮
+   */
+  onSwipeDeleteTap(e) {
+    const { id, name } = e.currentTarget.dataset;
+    wx.showModal({
+      title: '确认删除',
+      content: `确定要删除"${name}"吗？`,
+      success: (res) => {
+        if (res.confirm) {
+          storage.removeItem(id);
+          this.refreshData();
+          this.generateRecommendations();
+          wx.showToast({
+            title: '已删除',
+            icon: 'success'
+          });
+        }
+      }
+    });
+  },
+
+  /**
+   * 点击食材卡片
+   */
+  onInventoryTap(e) {
+    if (this.data.showDeleteMode) {
+      this.onDeleteTap(e);
+    }
+  },
+
+  /**
+   * 长按食材卡片
+   */
+  onInventoryLongPress(e) {
+    this.toggleDeleteMode();
   },
 
   refreshData() {
@@ -169,6 +352,7 @@ Page({
         if (res.confirm) {
           storage.removeItem(id);
           this.refreshData();
+          this.generateRecommendations();
           wx.showToast({
             title: '已删除',
             icon: 'success'
