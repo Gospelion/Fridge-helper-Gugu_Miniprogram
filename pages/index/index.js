@@ -99,8 +99,8 @@ Page({
       return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
     });
     
-    // 取前 5 个推荐
-    const topRecipes = matchableRecipes.slice(0, 5);
+    // 取前 2 个推荐（左右排列显示）
+    const topRecipes = matchableRecipes.slice(0, 2);
     
     this.setData({
       recommendedRecipes: topRecipes
@@ -128,6 +128,38 @@ Page({
   goAddPage() {
     wx.navigateTo({
       url: '/pages/add/add'
+    });
+  },
+
+  /**
+   * 点击推荐菜品卡片 - 选择 24h 内不再推荐某个食材
+   */
+  onRecommendTap(e) {
+    const { name, ingredients } = e.currentTarget.dataset;
+    const ingredientsList = JSON.parse(ingredients || '[]');
+    
+    if (ingredientsList.length === 0) {
+      wx.showToast({
+        title: '无可用食材',
+        icon: 'none'
+      });
+      return;
+    }
+    
+    wx.showActionSheet({
+      itemList: ingredientsList.map(item => `24h 内不推荐「${item}」`),
+      success: (res) => {
+        const selectedIngredient = ingredientsList[res.tapIndex];
+        storage.addExcludedIngredient(selectedIngredient);
+        
+        // 重新生成推荐
+        this.generateRecommendations();
+        
+        wx.showToast({
+          title: `已排除 ${selectedIngredient}`,
+          icon: 'success'
+        });
+      }
     });
   },
 
