@@ -187,16 +187,43 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20rpx;
+  margin-bottom: 16rpx;
+  gap: 16rpx;
 }
 .inventory-title {
   font-size: 30rpx;
   font-weight: bold;
   color: #333;
+  flex-shrink: 0;
 }
 .inventory-count {
   font-size: 24rpx;
   color: #999;
+  flex-shrink: 0;
+}
+
+/* --- 搜索框 --- */
+.search-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  padding: 12rpx 16rpx;
+  min-width: 0;
+}
+.search-input {
+  flex: 1;
+  font-size: 24rpx;
+  color: #333;
+  min-width: 0;
+}
+.search-clear {
+  font-size: 26rpx;
+  color: #999;
+  padding: 4rpx 8rpx;
+  margin-left: 4rpx;
+  flex-shrink: 0;
 }
 
 /* 筛选器样式 */
@@ -229,6 +256,218 @@
   color: #999;
   margin-bottom: 16rpx;
   line-height: 1.5;
+}
+
+/* --- 模态框遮罩 --- */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+.modal-mask.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* --- 单位选择器 --- */
+.unit-selector {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  z-index: 101;
+  max-height: 70vh;
+  transform: translateY(100%);
+  transition: transform 0.3s;
+}
+.unit-selector.active {
+  transform: translateY(0);
+}
+.unit-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.unit-selector-title {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+}
+.unit-selector-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.unit-selector-close text {
+  font-size: 32rpx;
+  color: #999;
+}
+.unit-grid {
+  padding: 24rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.unit-card {
+  width: calc(33.33% - 12rpx);
+  background-color: #f7f7f7;
+  border-radius: 12rpx;
+  padding: 20rpx 12rpx;
+  text-align: center;
+  box-sizing: border-box;
+  border: 2rpx solid transparent;
+  transition: all 0.2s;
+}
+.unit-card.selected {
+  background-color: #e8f5e9;
+  border-color: #4caf50;
+}
+.unit-card-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+/* --- 编辑弹窗 --- */
+.edit-modal {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  z-index: 101;
+  max-height: 80vh;
+  transform: translateY(100%);
+  transition: transform 0.3s;
+  display: flex;
+  flex-direction: column;
+}
+.edit-modal.active {
+  transform: translateY(0);
+}
+.edit-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 32rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.edit-modal-title {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+}
+.edit-modal-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.edit-modal-close text {
+  font-size: 32rpx;
+  color: #999;
+}
+.edit-modal-body {
+  padding: 32rpx;
+  overflow-y: auto;
+  flex: 1;
+}
+.edit-item {
+  margin-bottom: 32rpx;
+}
+.edit-label {
+  display: block;
+  font-size: 28rpx;
+  color: #555;
+  margin-bottom: 12rpx;
+  font-weight: 500;
+}
+.edit-value {
+  display: block;
+  font-size: 30rpx;
+  color: #333;
+  font-weight: bold;
+}
+.edit-input {
+  background-color: #f7f7f7;
+  border-radius: 8rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48rpx;
+}
+.edit-picker {
+  background-color: #f7f7f7;
+  border-radius: 8rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.edit-picker-arrow {
+  font-size: 20rpx;
+  color: #999;
+  margin-left: 10rpx;
+}
+.edit-modal-footer {
+  display: flex;
+  padding: 24rpx 32rpx 40rpx;
+  gap: 24rpx;
+  border-top: 1rpx solid #f0f0f0;
+}
+.edit-btn-cancel,
+.edit-btn-confirm {
+  flex: 1;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 32rpx;
+  border-radius: 12rpx;
+  font-weight: bold;
+}
+.edit-btn-cancel {
+  background-color: #f5f5f5;
+  color: #666;
+}
+.edit-btn-confirm {
+  background-color: #333;
+  color: #fff;
+}
+.edit-btn-cancel::after,
+.edit-btn-confirm::after {
+  border: none;
+}
+
+/* --- 新食材高亮动画 --- */
+.highlight-new {
+  animation: highlight-pulse 1s ease-in-out 3;
+}
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.08);
+  }
+  50% {
+    box-shadow: 0 4rpx 20rpx rgba(76, 175, 80, 0.5);
+    border: 2rpx solid #4caf50;
+  }
 }
 
 /* --- 核心：食材卡片流 (左滑容器) --- */

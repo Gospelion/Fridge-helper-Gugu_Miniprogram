@@ -13,17 +13,19 @@ Page({
     diaryList: []
   },
 
-  onLoad(options) {
-    // 如果从首页带过来推荐菜名，尽量选中
-    const recipeName = options && options.recipeName
-      ? decodeURIComponent(options.recipeName)
-      : '';
-    this.initRecipes(recipeName);
-    this.refreshDiary();
+  onLoad() {
+    this.initRecipes('');
   },
 
-    onShow() {
-    // 可能库存变化，日记中展示的消耗文本不依赖库存，可不必每次刷新
+  onShow() {
+    const app = getApp();
+    const pendingRecipeName = app.globalData.pendingRecipeName || '';
+    app.globalData.pendingRecipeName = '';
+    if (pendingRecipeName) {
+      this.setData({ customTitle: '' });
+    }
+    this.initRecipes(pendingRecipeName || this.data.selectedRecipeName);
+    this.refreshDiary();
     // 更新自定义 tabBar 选中状态
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({
@@ -35,8 +37,9 @@ Page({
   initRecipes(preferName) {
     const recipes = storage.getRecipes();
     const recipeNames = recipes.map((r) => r.name);
-    let selectedRecipeIndex = 0;
-    let selectedRecipeName = recipeNames[0] || '';
+    const hasCustomTitle = this.data.customTitle.trim().length > 0;
+    let selectedRecipeIndex = hasCustomTitle ? -1 : 0;
+    let selectedRecipeName = hasCustomTitle ? '' : (recipeNames[0] || '');
 
     if (preferName) {
       const idx = recipeNames.indexOf(preferName);
@@ -59,8 +62,15 @@ Page({
     const decorated = list.map((item) => {
       const date = new Date(item.createdAt || Date.now());
       const dateText = storage.formatDate(date);
-      const usedIngredientsText = (item.usedIngredients || [])
-        .map((u) => `${u.name} x${u.quantity}`)
+      const consumedByName = new Map();
+      (item.usedIngredients || []).forEach((ingredient) => {
+        const key = `${ingredient.name}|${ingredient.unit || ''}`;
+        const current = consumedByName.get(key) || { ...ingredient, quantity: 0 };
+        current.quantity += Number(ingredient.quantity) || 0;
+        consumedByName.set(key, current);
+      });
+      const usedIngredientsText = Array.from(consumedByName.values())
+        .map((u) => `${u.name} x${u.quantity}${u.unit || ''}`)
         .join('，');
       return {
         ...item,
@@ -98,19 +108,30 @@ Page({
     this.setData({
       selectedRecipeIndex: index,
       selectedRecipeName,
+      customTitle: '',
       showRecipeSelector: false
     });
   },
 
   onCustomTitleInput(e) {
+    const customTitle = e.detail.value;
+    const hasCustomTitle = customTitle.trim().length > 0;
+    const fallbackIndex = this.data.recipeNames.length ? 0 : -1;
     this.setData({
-      customTitle: e.detail.value
+      customTitle,
+      selectedRecipeIndex: hasCustomTitle ? -1 : fallbackIndex,
+      selectedRecipeName: hasCustomTitle ? '' : (this.data.recipeNames[fallbackIndex] || '')
     });
   },
 
   chooseImage() {
+    const remaining = 3 - this.data.imageList.length;
+    if (remaining <= 0) {
+      wx.showToast({ title: '最多选择 3 张图片', icon: 'none' });
+      return;
+    }
     wx.chooseImage({
-      count: 3,
+      count: remaining,
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: (res) => {
@@ -130,24 +151,68 @@ Page({
     });
   },
 
+  previewDiaryImage(e) {
+    const { entryId, imageIndex } = e.currentTarget.dataset;
+    const entry = this.data.diaryList.find((item) => item.id === entryId);
+    if (!entry || !entry.imageList[imageIndex]) return;
+    wx.previewImage({ current: entry.imageList[imageIndex], urls: entry.imageList });
+  },
+
+  compressImage(filePath) {
+    return new Promise((resolve, reject) => {
+      wx.compressImage({
+        src: filePath,
+        quality: 75,
+        success: (res) => resolve(res.tempFilePath),
+        fail: reject
+      });
+    });
+  },
+
+  saveFile(tempFilePath) {
+    return new Promise((resolve, reject) => {
+      wx.saveFile({
+        tempFilePath,
+        success: (res) => resolve(res.savedFilePath),
+        fail: reject
+      });
+    });
+  },
+
+  removeSavedFiles(paths) {
+    (paths || []).forEach((filePath) => {
+      wx.removeSavedFile({ filePath, fail: () => {} });
+    });
+  },
+
+  async persistImages(paths) {
+    const savedPaths = [];
+    try {
+      for (const path of paths) {
+        const compressedPath = await this.compressImage(path);
+        savedPaths.push(await this.saveFile(compressedPath));
+      }
+      return savedPaths;
+    } catch (error) {
+      this.removeSavedFiles(savedPaths);
+      throw error;
+    }
+  },
+
   /**
    * 发布日记并扣减库存
    */
-  onPublish() {
+  async onPublish() {
     const { recipes, selectedRecipeIndex, customTitle, imageList } = this.data;
-
-    if (!recipes.length && !customTitle.trim()) {
-      wx.showToast({
-        title: '请至少选择或填写一道菜名',
-        icon: 'none'
-      });
-      return;
-    }
-
     const recipe =
       recipes[selectedRecipeIndex] && recipes[selectedRecipeIndex].name
         ? recipes[selectedRecipeIndex]
         : null;
+
+    if (!recipe && !customTitle.trim()) {
+      wx.showToast({ title: '请至少选择或填写一道菜名', icon: 'none' });
+      return;
+    }
 
     const finalTitle =
       customTitle.trim() ||
@@ -161,31 +226,46 @@ Page({
           }))
         : [];
 
-    // 扣减库存
-    if (usedIngredients.length) {
-      storage.consumeIngredients(usedIngredients);
+    let savedImages = [];
+    wx.showLoading({ title: '正在保存', mask: true });
+    try {
+      savedImages = await this.persistImages(imageList);
+      storage.publishDiary({
+        title: finalTitle,
+        recipeName: recipe ? recipe.name : '',
+        imageList: savedImages,
+        usedIngredients
+      });
+      this.setData({
+        customTitle: '',
+        imageList: [],
+        selectedRecipeIndex: recipes.length ? 0 : -1,
+        selectedRecipeName: recipes[0]?.name || ''
+      });
+      this.refreshDiary();
+      wx.showToast({ title: '已记录并扣减库存', icon: 'success' });
+    } catch (error) {
+      console.error('保存日记失败:', error);
+      this.removeSavedFiles(savedImages);
+      wx.showToast({ title: '保存失败，请重试', icon: 'none' });
+    } finally {
+      wx.hideLoading();
     }
-
-    // 写入日记
-    storage.addDiaryEntry({
-      title: finalTitle,
-      recipeName: recipe ? recipe.name : '',
-      imageList,
-      usedIngredients
-    });
-
-    wx.showToast({
-      title: '已记录并扣减库存',
-      icon: 'success'
-    });
-
-    // 清空发布表单并刷新历史列表
-    this.setData({
-      customTitle: '',
-      imageList: []
-    });
-    this.refreshDiary();
   },
 
-  noop() {}
+  onDeleteDiary(e) {
+    const { id } = e.currentTarget.dataset;
+    wx.showModal({
+      title: '删除日记',
+      content: '删除后将同时清理已保存的照片，是否继续？',
+      success: (res) => {
+        if (!res.confirm) return;
+        const result = storage.removeDiaryEntry(id);
+        if (!result.removed) return;
+        this.removeSavedFiles(result.imagePaths);
+        this.refreshDiary();
+        wx.showToast({ title: '已删除', icon: 'success' });
+      }
+    });
+  }
 });

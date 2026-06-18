@@ -322,3 +322,15 @@
   font-size: 28rpx;
   color: #333333;
 }
+
+.diary-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.diary-delete {
+  color: #d9534f;
+  font-size: 24rpx;
+  padding: 8rpx 0 8rpx 12rpx;
+}

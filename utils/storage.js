@@ -1,10 +1,13 @@
 // utils/storage.js
 const STORAGE_KEY = 'fridge_chef_data';
+const SCHEMA_VERSION = 2;
+const { clone, consumeInventory, migrateData } = require('./domain');
 
 /**
  * 默认 Mock 数据
  */
 const defaultData = {
+  schemaVersion: SCHEMA_VERSION,
   inventory: [
     {
       id: 1,
@@ -85,57 +88,40 @@ const defaultData = {
     { name: '韭菜盒子', ingredients: ['韭菜', '鸡蛋', '面粉'], difficulty: '中等' },
     { name: '番茄鸡蛋饺子', ingredients: ['鸡蛋', '西红柿', '饺子皮'], difficulty: '中等' }
   ],
-  diary: []
+  diary: [],
+  excludedIngredients: [],
+  newlyAddedIngredients: []
 };
 
-function getRawData() {
-  const data = wx.getStorageSync(STORAGE_KEY);
-  
-  return data || null;
-}
+let cache = null;
 
 function saveData(data) {
+  cache = data;
   wx.setStorageSync(STORAGE_KEY, data);
 }
 
-/**
- * 初始化本地数据（只在首次安装或无数据时写入）
- */
-function initData() {
-  const data = getRawData();
-  if (!data || !data.inventory) {
-    // 首次使用，直接写入默认数据
-    saveData(defaultData);
-    return;
-  }
-  
-  // 已有数据时，检查是否需要补充默认食材（避免重复）
-  const inventory = data.inventory || [];
-  const existingNames = inventory.map(i => i.name);
-  
-  defaultData.inventory.forEach(defaultItem => {
-    if (!existingNames.includes(defaultItem.name)) {
-      inventory.push({
-        ...defaultItem,
-        id: Date.now() + Math.floor(Math.random() * 1000)
-      });
-    }
-  });
-  
-  data.inventory = inventory;
-  saveData(data);
+function initialize() {
+  if (cache) return clone(cache);
+  const raw = wx.getStorageSync(STORAGE_KEY) || null;
+  const migrated = migrateData(raw, defaultData, SCHEMA_VERSION);
+  saveData(migrated);
+  return clone(migrated);
 }
 
-/**
- * 对外导出完整数据
- */
-function getData() {
-  const data = getRawData();
-  if (!data) {
-    return defaultData;
-  }
-  return data;
+function getSnapshot() {
+  if (!cache) initialize();
+  return clone(cache);
 }
+
+function mutateData(mutator) {
+  const draft = getSnapshot();
+  const result = mutator(draft);
+  saveData(draft);
+  return result;
+}
+
+const initData = initialize;
+const getData = getSnapshot;
 
 /**
  * 工具函数：格式化日期为 YYYY-MM-DD
@@ -156,271 +142,139 @@ function addDays(date, days) {
   return d;
 }
 
-/**
- * 单位换算：将不同单位转换为标准单位"件"
- * 换算准则：
- * - 1 个 = 1 件
- * - 1 包 = 1 件
- * - 1kg = 2 件
- * - 1 斤 = 0.5kg = 1 件
- * - 1g = 0.001kg = 0.002 件
- */
-function convertToPieces(quantity, unit) {
-  const qty = Number(quantity) || 0;
-  
-  switch (unit) {
-    case '个':
-      return qty * 1;
-    case '包':
-      return qty * 1;
-    case '斤':
-      return qty * 1; // 1 斤 = 0.5kg = 1 件
-    case 'kg':
-      return qty * 2; // 1kg = 2 件
-    case 'g':
-      return qty * 0.002; // 1g = 0.002 件
-    default:
-      return qty; // 未知单位按原数量计算
-  }
-}
-
-/**
- * 单位换算：将"件"转换回指定单位（用于显示）
- */
-function convertFromPieces(pieces, targetUnit) {
-  const pcs = Number(pieces) || 0;
-  
-  switch (targetUnit) {
-    case '个':
-      return pcs / 1;
-    case '包':
-      return pcs / 1;
-    case '斤':
-      return pcs / 1;
-    case 'kg':
-      return pcs / 2;
-    case 'g':
-      return pcs / 0.002;
-    default:
-      return pcs;
-  }
-}
-
-/**
- * 获取库存列表
- */
 function getInventory() {
-  return getData().inventory || [];
+  return getSnapshot().inventory;
 }
 
-/**
- * 新增食材
- */
 function addItem(item) {
-  const data = getData();
-  const inventory = data.inventory || [];
-  const id = Date.now() + Math.floor(Math.random() * 1000);
-  inventory.push({
-    id,
-    ...item
-  });
-  data.inventory = inventory;
-  saveData(data);
-  return id;
+  return addItems([item])[0];
 }
 
-/**
- * 更新食材
- */
+function addItems(items) {
+  return mutateData((data) => {
+    const base = Date.now();
+    const ids = (items || []).map((item, index) => {
+      const id = base + index + Math.floor(Math.random() * 1000);
+      data.inventory.push({ id, ...item });
+      return id;
+    });
+    return ids;
+  });
+}
+
 function updateItem(id, patch) {
-  const data = getData();
-  const inventory = data.inventory || [];
-  const idx = inventory.findIndex((i) => i.id === id);
-  if (idx !== -1) {
-    inventory[idx] = {
-      ...inventory[idx],
-      ...patch
-    };
-    data.inventory = inventory;
-    saveData(data);
-  }
+  return mutateData((data) => {
+    const index = data.inventory.findIndex((item) => item.id === id);
+    if (index < 0) return false;
+    data.inventory[index] = { ...data.inventory[index], ...patch };
+    return true;
+  });
 }
 
-/**
- * 删除食材
- */
 function removeItem(id) {
-  const data = getData();
-  const inventory = data.inventory || [];
-  data.inventory = inventory.filter((i) => i.id !== id);
-  saveData(data);
+  return mutateData((data) => {
+    const before = data.inventory.length;
+    data.inventory = data.inventory.filter((item) => item.id !== id);
+    return data.inventory.length !== before;
+  });
 }
 
-/**
- * 获取菜谱
- */
 function getRecipes() {
-  return getData().recipes || [];
+  return getSnapshot().recipes;
 }
 
-/**
- * 获取食物日记列表（按时间倒序）
- */
 function getDiary() {
-  const diary = getData().diary || [];
-  return diary.sort((a, b) => b.createdAt - a.createdAt);
+  return getSnapshot().diary.slice().sort((a, b) => b.createdAt - a.createdAt);
 }
 
-/**
- * 新增一条日记
- */
-function addDiaryEntry(entry) {
-  const data = getData();
-  const diary = data.diary || [];
-  diary.push({
-    id: Date.now() + Math.floor(Math.random() * 1000),
-    createdAt: Date.now(),
-    ...entry
+function publishDiary(entry) {
+  return mutateData((data) => {
+    const consumption = consumeInventory(data.inventory, entry.usedIngredients || []);
+    const diaryEntry = {
+      ...entry,
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      createdAt: Date.now(),
+      usedIngredients: consumption.consumedItems
+    };
+    data.inventory = consumption.inventory;
+    data.diary.push(diaryEntry);
+    return { diaryEntry: clone(diaryEntry), consumedItems: clone(consumption.consumedItems) };
   });
-  data.diary = diary;
-  saveData(data);
 }
 
-/**
- * 根据消耗的食材扣减库存
- * consumedList: [{ name: '鸡蛋', quantity: 1 }]
- */
-function consumeIngredients(consumedList) {
-  const data = getData();
-  const inventory = data.inventory || [];
-
-  consumedList.forEach((c) => {
-    const item = inventory.find((i) => i.name === c.name);
-    if (item) {
-      const left = (item.quantity || 0) - (c.quantity || 0);
-      if (left <= 0) {
-        // 数量用完，从列表移除
-        const idx = inventory.findIndex((i) => i.id === item.id);
-        if (idx !== -1) {
-          inventory.splice(idx, 1);
-        }
-      } else {
-        item.quantity = left;
-      }
-    }
+function removeDiaryEntry(id) {
+  return mutateData((data) => {
+    const index = data.diary.findIndex((entry) => entry.id === id);
+    if (index < 0) return { removed: false, imagePaths: [] };
+    const [removed] = data.diary.splice(index, 1);
+    return { removed: true, imagePaths: clone(removed.imageList || []) };
   });
-
-  data.inventory = inventory;
-  saveData(data);
 }
 
-/**
- * 获取不推荐的食材列表（已过滤 24 小时外的过期记录）
- */
 function getExcludedIngredients() {
-  const data = getData();
-  const excluded = data.excludedIngredients || [];
+  const data = getSnapshot();
+  const excluded = data.excludedIngredients;
   const now = Date.now();
-  // 过滤掉已过期的记录（超过 24 小时）
-  const valid = excluded.filter(item => item.expireAt > now);
-  // 如果有过滤，更新存储
+  const valid = excluded.filter((item) => item.expireAt > now);
   if (valid.length !== excluded.length) {
-    data.excludedIngredients = valid;
-    saveData(data);
-  }
-  return valid.map(item => item.ingredientName);
-}
-
-/**
- * 添加不推荐的食材（24 小时内不推荐）
- */
-function addExcludedIngredient(ingredientName) {
-  const data = getData();
-  const excluded = data.excludedIngredients || [];
-  const now = Date.now();
-  const expireAt = now + 24 * 60 * 60 * 1000; // 24 小时后
-  
-  // 如果已存在，更新过期时间
-  const existing = excluded.find(item => item.ingredientName === ingredientName);
-  if (existing) {
-    existing.expireAt = expireAt;
-  } else {
-    excluded.push({
-      ingredientName,
-      expireAt
+    mutateData((draft) => {
+      draft.excludedIngredients = valid;
     });
   }
-  
-  data.excludedIngredients = excluded;
-  saveData(data);
+  return valid.map((item) => item.ingredientName);
 }
 
-/**
- * 移除不推荐的食材
- */
-function removeExcludedIngredient(ingredientName) {
-  const data = getData();
-  const excluded = data.excludedIngredients || [];
-  data.excludedIngredients = excluded.filter(item => item.ingredientName !== ingredientName);
-  saveData(data);
+function addExcludedIngredient(ingredientName) {
+  mutateData((data) => {
+    const expireAt = Date.now() + 24 * 60 * 60 * 1000;
+    const existing = data.excludedIngredients.find(
+      (item) => item.ingredientName === ingredientName
+    );
+    if (existing) existing.expireAt = expireAt;
+    else data.excludedIngredients.push({ ingredientName, expireAt });
+  });
 }
 
-/**
- * 记录新添加的食材 ID（用于返回主页后高亮提示）
- */
 function markNewlyAddedIngredients(ids) {
-  const data = getData();
-  const now = Date.now();
-  // 将 ID 数组转为 { id, timestamp } 格式
-  const newMarks = ids.map(id => ({ id, timestamp: now }));
-  // 合并到现有标记中
-  data.newlyAddedIngredients = newMarks;
-  saveData(data);
+  mutateData((data) => {
+    const now = Date.now();
+    data.newlyAddedIngredients = ids.map((id) => ({ id, timestamp: now }));
+  });
 }
 
-/**
- * 获取新添加的食材 ID 列表（5 秒内的标记）
- * 返回格式：{ ids: number[], shouldHighlight: boolean }
- */
 function getNewlyAddedIngredients() {
-  const data = getData();
-  const marks = data.newlyAddedIngredients || [];
+  const data = getSnapshot();
   const now = Date.now();
-  const validWindow = 5000; // 5 秒时间窗口
-  
-  // 过滤出 5 秒内的标记
-  const validMarks = marks.filter(mark => now - mark.timestamp < validWindow);
-  
-  // 如果有有效标记，清除存储（避免重复触发）
+  const validMarks = data.newlyAddedIngredients.filter((mark) => now - mark.timestamp < 5000);
   if (validMarks.length > 0) {
-    data.newlyAddedIngredients = [];
-    saveData(data);
+    mutateData((draft) => {
+      draft.newlyAddedIngredients = [];
+    });
   }
-  
   return {
-    ids: validMarks.map(m => m.id),
+    ids: validMarks.map((mark) => mark.id),
     shouldHighlight: validMarks.length > 0
   };
 }
 
 module.exports = {
+  initialize,
+  getSnapshot,
   initData,
   getData,
   getInventory,
   addItem,
+  addItems,
   updateItem,
   removeItem,
   getRecipes,
   getDiary,
-  addDiaryEntry,
-  consumeIngredients,
+  publishDiary,
+  removeDiaryEntry,
   formatDate,
   addDays,
-  convertToPieces,
-  convertFromPieces,
   getExcludedIngredients,
   addExcludedIngredient,
-  removeExcludedIngredient,
   markNewlyAddedIngredients,
   getNewlyAddedIngredients
 };

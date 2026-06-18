@@ -2,6 +2,10 @@
 const storage = require('./utils/storage');
 
 App({
+  globalData: {
+    pendingRecipeName: ''
+  },
+
   onLaunch() {
 
     // 1 初始化云开发
@@ -15,7 +19,7 @@ App({
     }
 
     // 2 初始化本地存储 Mock 数据
-    storage.initData();
+    storage.initialize();
 
   }
 });

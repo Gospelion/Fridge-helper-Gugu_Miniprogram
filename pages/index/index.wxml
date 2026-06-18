@@ -32,7 +32,6 @@
               class="btn-primary recommend-btn"
               data-name="{{item.name}}"
               bindtap="goDiaryWithRecipe"
-              catchtap="onRecordTap"
             >
               记录
             </button>
@@ -72,7 +71,20 @@
   <view class="card inventory-card">
     <view class="inventory-header">
       <text class="inventory-title">当前库存</text>
-      <text class="inventory-count">{{inventory.length}} 种食材</text>
+
+      <!-- 搜索框 -->
+      <view class="search-bar">
+        <input
+          class="search-input"
+          placeholder="搜索食材..."
+          value="{{searchKey}}"
+          bindinput="onSearchInput"
+          confirm-type="search"
+        />
+        <text wx:if="{{searchKey}}" class="search-clear" bindtap="onSearchClear">✕</text>
+      </view>
+
+      <text class="inventory-count">{{filteredInventory.length}} 种食材</text>
     </view>
 
     <!-- 顶部分类筛选栏 -->
@@ -95,9 +107,9 @@
       </view>
     </scroll-view>
 
-    <block wx:if="{{inventory.length}}">
+    <block wx:if="{{filteredInventory.length}}">
       <view class="inventory-list">
-        <block wx:for="{{inventory}}" wx:key="id">
+        <block wx:for="{{filteredInventory}}" wx:key="id">
           <!-- 
             movable-area: 可视窗口，宽度必须固定为屏幕宽 
             不要在这里设 width: 100%，最好由 CSS 控制
@@ -124,7 +136,7 @@
                 
                 <!-- 左侧：食材卡片 -->
                 <view
-                  class="ingredient-card {{item.categoryBgClass}}"
+                  class="ingredient-card {{item.categoryBgClass}} {{item.isNewlyAdded ? 'highlight-new' : ''}}"
                   bindtap="onInventoryTap"
                   bindlongpress="onInventoryLongPress"
                   data-id="{{item.id}}"
@@ -169,8 +181,9 @@
           src="/assets/empty-fridge.png"
           mode="aspectFit"
         ></image>
-        <text class="empty-state-title">冰箱还是空的</text>
-        <text class="empty-state-desc">开始添加第一批食材吧</text>
+        <text class="empty-state-title">{{searchKey ? '没有找到匹配的食材' : '冰箱还是空的'}}</text>
+        <text class="empty-state-desc">{{searchKey ? '试试其他关键词吧' : '开始添加第一批食材吧'}}</text>
+        <button wx:if="{{searchKey}}" class="btn-primary" size="mini" bindtap="onSearchClear">清除搜索</button>
       </view>
     </block>
   </view>
@@ -180,3 +193,82 @@
     <button class="fab-btn" bindtap="goAddPage">+</button>
   </view>
 </scroll-view>
+
+<!-- 编辑食材模态框 -->
+<view class="modal-mask {{showEditModal ? 'active' : ''}}" bindtap="closeEditModal"></view>
+<view class="edit-modal {{showEditModal ? 'active' : ''}}">
+  <view class="edit-modal-header">
+    <text class="edit-modal-title">编辑食材</text>
+    <view class="edit-modal-close" bindtap="closeEditModal">
+      <text>✕</text>
+    </view>
+  </view>
+
+  <view class="edit-modal-body">
+    <!-- 食材名称（不可编辑） -->
+    <view class="edit-item">
+      <text class="edit-label">食材名称</text>
+      <text class="edit-value">{{editForm.name}}</text>
+    </view>
+
+    <!-- 数量 -->
+    <view class="edit-item">
+      <text class="edit-label">数量</text>
+      <input
+        class="edit-input"
+        type="number"
+        placeholder="请输入数量"
+        value="{{editForm.quantity}}"
+        bindinput="onEditQuantityInput"
+      />
+    </view>
+
+    <!-- 单位 -->
+    <view class="edit-item">
+      <text class="edit-label">单位</text>
+      <view class="edit-picker" bindtap="openEditUnitSelector">
+        <text>{{units[editForm.unitIndex]}}</text>
+        <text class="edit-picker-arrow">▼</text>
+      </view>
+    </view>
+
+    <!-- 距离过期天数 -->
+    <view class="edit-item">
+      <text class="edit-label">距离过期（天）</text>
+      <input
+        class="edit-input"
+        type="number"
+        placeholder="请输入天数"
+        value="{{editForm.expiryDays}}"
+        bindinput="onEditExpiryDaysInput"
+      />
+    </view>
+  </view>
+
+  <view class="edit-modal-footer">
+    <button class="edit-btn-cancel" bindtap="closeEditModal">取消</button>
+    <button class="edit-btn-confirm" bindtap="confirmEdit">保存</button>
+  </view>
+</view>
+
+<!-- 单位选择器（编辑用） -->
+<view class="modal-mask {{showEditUnitSelector ? 'active' : ''}}" bindtap="closeEditUnitSelector"></view>
+<view class="unit-selector {{showEditUnitSelector ? 'active' : ''}}">
+  <view class="unit-selector-header">
+    <text class="unit-selector-title">选择单位</text>
+    <view class="unit-selector-close" bindtap="closeEditUnitSelector">
+      <text>✕</text>
+    </view>
+  </view>
+  <view class="unit-grid">
+    <block wx:for="{{units}}" wx:key="*this">
+      <view
+        class="unit-card {{editForm.unitIndex === index ? 'selected' : ''}}"
+        bindtap="onEditUnitCardTap"
+        data-index="{{index}}"
+      >
+        <text class="unit-card-name">{{item}}</text>
+      </view>
+    </block>
+  </view>
+</view>

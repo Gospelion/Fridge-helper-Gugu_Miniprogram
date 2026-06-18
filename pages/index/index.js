@@ -1,5 +1,6 @@
 // pages/index/index.js
 const storage = require('../../utils/storage');
+const { buildRecommendations, filterInventory } = require('../../utils/domain');
 
 Page({
   data: {
@@ -12,20 +13,28 @@ Page({
     recommendedRecipes: [],
     categories: ['全部', '农产品', '蔬菜', '水果', '饮品/其他'],
     activeCategory: '全部',
-    swipeOffsets: {}
+    swipeOffsets: {},
+    // 编辑相关
+    units: ['个', 'kg', '包', 'g', '斤', '份'],
+    showEditModal: false,
+    showEditUnitSelector: false,
+    editForm: {
+      id: null,
+      name: '',
+      quantity: '',
+      unitIndex: 0,
+      expiryDays: ''
+    }
   },
 
   onLoad() {
-    storage.initData();
-    this.refreshData();
-    this.generateRecommendations();
+    this._swipePositions = {};
   },
 
   onShow() {
-    this.refreshData();
-    this.generateRecommendations();
-    // 检查是否有新添加的食材需要高亮
-    this.checkNewlyAddedIngredients();
+    const highlight = storage.getNewlyAddedIngredients();
+    this.refreshPage(highlight.ids);
+    this.scheduleHighlightClear(highlight.ids);
     // 更新自定义 tabBar 选中状态
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({
@@ -34,77 +43,33 @@ Page({
     }
   },
 
-  /**
-   * 检查新添加的食材并设置高亮标记
-   */
-  checkNewlyAddedIngredients() {
-    const result = storage.getNewlyAddedIngredients();
-    if (result.shouldHighlight && result.ids.length > 0) {
-      this.setData({
-        newlyAddedIds: result.ids
-      });
-      setTimeout(() => {
-        this.setData({
-          newlyAddedIds: []
-        });
-      }, 3000);
+  onHide() {
+    this.clearHighlightTimer();
+  },
+
+  onUnload() {
+    this.clearHighlightTimer();
+  },
+
+  clearHighlightTimer() {
+    if (this._highlightTimer) {
+      clearTimeout(this._highlightTimer);
+      this._highlightTimer = null;
     }
   },
 
-  /**
-   * 根据当前库存生成推荐菜谱
-   */
-  generateRecommendations() {
-    const inventory = storage.getInventory();
-    const recipes = storage.getRecipes();
-    
-    // 获取当前库存中的食材名称列表
-    const availableIngredients = inventory.map(item => item.name);
-    
-    if (availableIngredients.length === 0) {
-      this.setData({ recommendedRecipes: [] });
-      return;
-    }
-    
-    // 计算每个菜谱的匹配度
-    const scoredRecipes = recipes.map(recipe => {
-      const matchCount = recipe.ingredients.filter(ing => 
-        availableIngredients.includes(ing)
-      ).length;
-      const totalIngredients = recipe.ingredients.length;
-      const matchRate = matchCount / totalIngredients;
-      
-      return {
-        ...recipe,
-        matchCount,
-        totalIngredients,
-        matchRate,
-        ingredientsText: recipe.ingredients.join('、'),
-        ingredientsStr: JSON.stringify(recipe.ingredients)
-      };
-    });
-    
-    // 筛选出至少能匹配 1 种食材的菜谱
-    const matchableRecipes = scoredRecipes.filter(recipe => recipe.matchCount >= 1);
-    
-    // 按匹配度排序，优先推荐匹配度高的
-    matchableRecipes.sort((a, b) => {
-      if (b.matchRate !== a.matchRate) {
-        return b.matchRate - a.matchRate;
-      }
-      if (b.matchCount !== a.matchCount) {
-        return b.matchCount - a.matchCount;
-      }
-      const difficultyOrder = { '极简': 0, '简单': 1, '中等': 2, '困难': 3 };
-      return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty];
-    });
-    
-    // 取前 2 个推荐（左右排列显示）
-    const topRecipes = matchableRecipes.slice(0, 2);
-    
-    this.setData({
-      recommendedRecipes: topRecipes
-    });
+  scheduleHighlightClear(ids) {
+    this.clearHighlightTimer();
+    if (!ids.length) return;
+    this._highlightTimer = setTimeout(() => {
+      const clearFlag = (items) => items.map((item) => ({ ...item, isNewlyAdded: false }));
+      this.setData({
+        newlyAddedIds: [],
+        inventory: clearFlag(this.data.inventory),
+        filteredInventory: clearFlag(this.data.filteredInventory)
+      });
+      this._highlightTimer = null;
+    }, 3000);
   },
 
   /**
@@ -112,14 +77,9 @@ Page({
    */
   onRefreshRecommend() {
     wx.showLoading({ title: '生成中...' });
-    setTimeout(() => {
-      this.generateRecommendations();
-      wx.hideLoading();
-      wx.showToast({
-        title: '已更新推荐',
-        icon: 'success'
-      });
-    }, 300);
+    this.refreshPage();
+    wx.hideLoading();
+    wx.showToast({ title: '已更新推荐', icon: 'success' });
   },
 
   /**
@@ -152,8 +112,7 @@ Page({
         const selectedIngredient = ingredientsList[res.tapIndex];
         storage.addExcludedIngredient(selectedIngredient);
         
-        // 重新生成推荐
-        this.generateRecommendations();
+        this.refreshPage();
         
         wx.showToast({
           title: `已排除 ${selectedIngredient}`,
@@ -168,9 +127,8 @@ Page({
    */
   goDiaryWithRecipe(e) {
     const { name } = e.currentTarget.dataset;
-    wx.navigateTo({
-      url: `/pages/diary/diary?recipeName=${encodeURIComponent(name)}`
-    });
+    getApp().globalData.pendingRecipeName = name;
+    wx.switchTab({ url: '/pages/diary/diary' });
   },
 
   /**
@@ -179,19 +137,12 @@ Page({
   onFilterTap(e) {
     const { name } = e.currentTarget.dataset;
     this.setData({
-      activeCategory: name
+      activeCategory: name,
+      filteredInventory: filterInventory(this.data.inventory, {
+        searchKey: this.data.searchKey,
+        category: name
+      })
     });
-    
-    if (name === '全部') {
-      this.setData({
-        filteredInventory: this.data.inventory
-      });
-    } else {
-      const filtered = this.data.inventory.filter(item => item.category === name);
-      this.setData({
-        filteredInventory: filtered
-      });
-    }
   },
 
   /**
@@ -200,9 +151,7 @@ Page({
   onItemSwipeChange(e) {
     const { id } = e.currentTarget.dataset;
     const { x } = e.detail;
-    this.setData({
-      [`swipeOffsets[${id}]`]: x
-    });
+    this._swipePositions[id] = x;
   },
 
   /**
@@ -210,7 +159,7 @@ Page({
    */
   onItemSwipeEnd(e) {
     const { id } = e.currentTarget.dataset;
-    const { x } = e.detail;
+    const x = this._swipePositions[id] || 0;
     const threshold = -60;
     
     if (x < threshold) {
@@ -235,8 +184,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           storage.removeItem(id);
-          this.refreshData();
-          this.generateRecommendations();
+          this.refreshPage();
           wx.showToast({
             title: '已删除',
             icon: 'success'
@@ -252,6 +200,9 @@ Page({
   onInventoryTap(e) {
     if (this.data.showDeleteMode) {
       this.onDeleteTap(e);
+    } else {
+      // 非删除模式下，点击打开编辑弹窗
+      this.openEditModal(e);
     }
   },
 
@@ -262,8 +213,11 @@ Page({
     this.toggleDeleteMode();
   },
 
-  refreshData() {
-    const list = storage.getInventory();
+  refreshPage(newlyAddedIds = this.data.newlyAddedIds || []) {
+    const snapshot = storage.getSnapshot();
+    const excludedIngredients = storage.getExcludedIngredients();
+    const highlighted = new Set(newlyAddedIds);
+    const list = snapshot.inventory;
     const decorated = list.map((item) => {
       const daysLeft = this.calcDaysLeft(item.expiryDate);
       const status = this.getStatus(daysLeft);
@@ -274,6 +228,7 @@ Page({
         daysLeft,
         status,
         categoryBgClass,
+        isNewlyAdded: highlighted.has(item.id),
         expiryDate: item.expiryDate || '未设置',
         ...expiryInfo
       };
@@ -288,10 +243,21 @@ Page({
       expiredTypes: new Set(decorated.filter(item => item.status === 'expired').map(item => item.name)).size
     };
 
+    const filteredInventory = filterInventory(decorated, {
+      searchKey: this.data.searchKey,
+      category: this.data.activeCategory
+    });
+
     this.setData({
       inventory: decorated,
-      filteredInventory: this.filterBySearch(decorated, this.data.searchKey),
-      dashboard
+      filteredInventory,
+      dashboard,
+      newlyAddedIds,
+      recommendedRecipes: buildRecommendations(
+        snapshot.inventory,
+        snapshot.recipes,
+        excludedIngredients
+      )
     });
   },
 
@@ -342,36 +308,29 @@ Page({
     return { expiryLabel: `🟢 剩余 ${daysLeft} 天`, expiryStatusClass: 'expiry-normal' };
   },
 
-  filterBySearch(list, key) {
-    if (!key) return list;
-    const k = key.toLowerCase();
-    return list.filter((item) => item.name.toLowerCase().includes(k));
-  },
-
   onSearchInput(e) {
     const searchKey = e.detail.value || '';
     this.setData({
       searchKey,
-      filteredInventory: this.filterBySearch(this.data.inventory, searchKey)
+      filteredInventory: filterInventory(this.data.inventory, {
+        searchKey,
+        category: this.data.activeCategory
+      })
+    });
+  },
+
+  onSearchClear() {
+    this.setData({
+      searchKey: '',
+      filteredInventory: filterInventory(this.data.inventory, {
+        category: this.data.activeCategory
+      })
     });
   },
 
   toggleDeleteMode() {
     this.setData({
       showDeleteMode: !this.data.showDeleteMode
-    });
-  },
-
-  onAddTap() {
-    wx.navigateTo({
-      url: '/pages/add/add'
-    });
-  },
-
-  onRecipeCardTap(e) {
-    const { name } = e.currentTarget.dataset;
-    wx.navigateTo({
-      url: `/pages/diary/diary?recipeName=${encodeURIComponent(name)}`
     });
   },
 
@@ -383,8 +342,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           storage.removeItem(id);
-          this.refreshData();
-          this.generateRecommendations();
+          this.refreshPage();
           wx.showToast({
             title: '已删除',
             icon: 'success'
@@ -394,6 +352,134 @@ Page({
     });
   },
 
-  noop() {}
+  /**
+   * 打开编辑弹窗
+   */
+  openEditModal(e) {
+    const { id, name, quantity, unit } = e.currentTarget.dataset;
+    const item = this.data.inventory.find(i => i.id === id);
+    if (!item) return;
+
+    // 计算距离过期天数
+    const daysLeft = this.calcDaysLeft(item.expiryDate);
+    const expiryDays = daysLeft > 0 ? String(daysLeft) : '0';
+
+    // 查找单位索引
+    const unitIndex = this.data.units.indexOf(unit || '个');
+
+    this.setData({
+      editForm: {
+        id,
+        name,
+        quantity: String(quantity),
+        unitIndex: unitIndex >= 0 ? unitIndex : 0,
+        expiryDays
+      },
+      showEditModal: true
+    });
+  },
+
+  /**
+   * 关闭编辑弹窗
+   */
+  closeEditModal() {
+    this.setData({
+      showEditModal: false,
+      showEditUnitSelector: false
+    });
+  },
+
+  /**
+   * 编辑数量输入
+   */
+  onEditQuantityInput(e) {
+    this.setData({
+      'editForm.quantity': e.detail.value
+    });
+  },
+
+  /**
+   * 编辑过期天数输入
+   */
+  onEditExpiryDaysInput(e) {
+    this.setData({
+      'editForm.expiryDays': e.detail.value
+    });
+  },
+
+  /**
+   * 打开单位选择器
+   */
+  openEditUnitSelector() {
+    this.setData({
+      showEditUnitSelector: true
+    });
+  },
+
+  /**
+   * 关闭单位选择器
+   */
+  closeEditUnitSelector() {
+    this.setData({
+      showEditUnitSelector: false
+    });
+  },
+
+  /**
+   * 点击单位卡片
+   */
+  onEditUnitCardTap(e) {
+    const { index } = e.currentTarget.dataset;
+    this.setData({
+      'editForm.unitIndex': index,
+      showEditUnitSelector: false
+    });
+  },
+
+  /**
+   * 确认编辑
+   */
+  confirmEdit() {
+    const { id, quantity, unitIndex, expiryDays } = this.data.editForm;
+
+    // 验证数量
+    const num = Number(quantity);
+    if (Number.isNaN(num) || num <= 0) {
+      wx.showToast({
+        title: '数量需为正数',
+        icon: 'none'
+      });
+      return;
+    }
+
+    // 验证天数
+    const days = Number(expiryDays);
+    if (Number.isNaN(days) || days < 0) {
+      wx.showToast({
+        title: '天数需为非负数',
+        icon: 'none'
+      });
+      return;
+    }
+
+    // 计算过期日期
+    const now = new Date();
+    const expiryDate = storage.formatDate(storage.addDays(now, days));
+
+    // 更新食材
+    const unit = this.data.units[unitIndex] || '个';
+    storage.updateItem(id, {
+      quantity: num,
+      unit,
+      expiryDate
+    });
+
+    wx.showToast({
+      title: '已保存',
+      icon: 'success'
+    });
+
+    this.closeEditModal();
+    this.refreshPage();
+  }
 });
-  

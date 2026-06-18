@@ -68,19 +68,24 @@
           <view class="diary-item">
             <view class="diary-header">
               <text class="diary-title">{{item.title}}</text>
-              <text class="diary-date">{{item.dateText}}</text>
+              <view class="diary-header-actions">
+                <text class="diary-date">{{item.dateText}}</text>
+                <text class="diary-delete" data-id="{{item.id}}" catchtap="onDeleteDiary">删除</text>
+              </view>
             </view>
             <view class="diary-content">
               <view class="diary-images" wx:if="{{item.imageList && item.imageList.length}}">
                 <image
                   wx:for="{{item.imageList}}"
+                  wx:for-item="imagePath"
+                  wx:for-index="imageIndex"
                   wx:key="*this"
                   class="diary-image"
-                  src="{{item}}"
+                  src="{{imagePath}}"
                   mode="aspectFill"
-                  data-index="{{index}}"
-                  data-parentindex="{{index}}"
-                  catchtap="noop"
+                  data-entry-id="{{item.id}}"
+                  data-image-index="{{imageIndex}}"
+                  bindtap="previewDiaryImage"
                 ></image>
               </view>
               <view class="diary-meta">
