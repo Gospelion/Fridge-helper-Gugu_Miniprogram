@@ -23,6 +23,8 @@
   box-shadow: 0 12rpx 36rpx rgba(61, 48, 34, 0.07), inset 0 2rpx 0 rgba(255, 255, 255, 0.72);
   box-sizing: border-box;
   pointer-events: auto;
+  font-family: "SourceHanSansExtraLight", "SourceHanSansExtraLightLatin", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 200;
 }
 
 .tab-bar-item {
@@ -65,6 +67,11 @@
 .tab-bar-item.active .tab-text {
   color: #315c4b;
   font-weight: 650;
+}
+
+.tab-text,
+.tab-bar-item.active .tab-text {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
 .active-indicator {

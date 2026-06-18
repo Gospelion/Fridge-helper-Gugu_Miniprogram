@@ -9,6 +9,18 @@
   z-index: -1;
 }
 
+page {
+  font-family: "SourceHanSansExtraLight", "SourceHanSansExtraLightLatin", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 200;
+}
+
+.summary-title,
+.item-name,
+.expiry-label,
+.empty-title {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
 .page {
   min-height: 100vh;
   padding: 24rpx;

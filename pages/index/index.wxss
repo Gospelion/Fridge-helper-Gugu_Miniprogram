@@ -1,6 +1,33 @@
 page {
   background: #F2EBDD;
   color: #24231f;
+  font-family: "SourceHanSansExtraLight", "SourceHanSansExtraLightLatin", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 200;
+}
+
+.hero-title,
+.hero-summary-count,
+.section-title,
+.inventory-title,
+.recipe-name,
+.recommend-btn,
+.compact-btn,
+.empty-title,
+.dashboard-value,
+.dashboard-unit,
+.search-label,
+.ingredient-name,
+.ingredient-expiry-text,
+.ingredient-quantity,
+.swipe-delete,
+.empty-state-title,
+.fab-btn,
+.edit-modal-title,
+.unit-selector-title,
+.edit-label,
+.edit-value,
+.edit-btn-cancel,
+.edit-btn-confirm {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
@@ -438,7 +465,7 @@ page {
 }
 
 .swipe-view {
-  width: auto;
+  width: calc(100% + 144rpx);
   height: 126rpx;
   background: transparent;
   white-space: nowrap;
@@ -448,13 +475,13 @@ page {
 }
 
 .swipe-inner {
-  width: max-content;
+  width: 100%;
   height: 126rpx;
   display: flex;
 }
 
 .ingredient-card {
-  width: calc(100vw - 120rpx);
+  width: calc(100% - 144rpx);
   height: 126rpx;
   padding: 20rpx 22rpx;
   display: flex;

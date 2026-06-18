@@ -1,6 +1,28 @@
 page {
   background: #F2EBDD;
   color: #24231f;
+  font-family: "SourceHanSansExtraLight", "SourceHanSansExtraLightLatin", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 200;
+}
+
+.hero-eyebrow,
+.hero-title,
+.hero-count,
+.section-title,
+.section-index,
+.form-label,
+.field-action,
+.image-add-title,
+.publish-btn,
+.history-count,
+.diary-date,
+.diary-title,
+.diary-delete,
+.empty-state-title,
+.recipe-selector-title,
+.recipe-selector-close,
+.recipe-card-index,
+.recipe-card-name {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 

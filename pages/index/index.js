@@ -201,11 +201,15 @@ Page({
   onItemSwipeEnd(e) {
     const { id } = e.currentTarget.dataset;
     const x = this._swipePositions[id] || 0;
-    const threshold = -60;
+    const windowInfo = typeof wx.getWindowInfo === 'function'
+      ? wx.getWindowInfo()
+      : wx.getSystemInfoSync();
+    const deleteWidth = windowInfo.windowWidth * 144 / 750;
+    const threshold = -deleteWidth * 0.5;
     
     if (x < threshold) {
       this.setData({
-        [`swipeOffsets[${id}]`]: -80
+        [`swipeOffsets[${id}]`]: -deleteWidth
       });
     } else {
       this.setData({

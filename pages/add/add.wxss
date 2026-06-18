@@ -1,6 +1,29 @@
 page {
   background: #F2EBDD;
   color: #24231f;
+  font-family: "SourceHanSansExtraLight", "SourceHanSansExtraLightLatin", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-weight: 200;
+}
+
+.back-link,
+.top-caption,
+.hero-title,
+.section-title,
+.section-index,
+.scan-btn,
+.submit-btn,
+.review-cancel,
+.review-confirm,
+.recognized-title,
+.quick-label,
+.form-label,
+.field-action,
+.sheet-title,
+.sheet-close,
+.review-index,
+.review-remove,
+.unit-card-index,
+.unit-card-name {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
