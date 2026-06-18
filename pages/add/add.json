@@ -1,4 +1,7 @@
 {
+  "navigationStyle": "custom",
   "navigationBarTitleText": "添加食材",
+  "backgroundColor": "#F2EBDD",
+  "backgroundTextStyle": "dark",
   "usingComponents": {}
 }

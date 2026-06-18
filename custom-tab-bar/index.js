@@ -7,11 +7,15 @@ Component({
     list: [
       {
         pagePath: "/pages/index/index",
-        text: "库存"
+        text: "库存",
+        iconPath: "/custom-tab-bar/assets/inventory.png",
+        selectedIconPath: "/custom-tab-bar/assets/inventory-active.png"
       },
       {
         pagePath: "/pages/diary/diary",
-        text: "日记"
+        text: "日记",
+        iconPath: "/custom-tab-bar/assets/diary.png",
+        selectedIconPath: "/custom-tab-bar/assets/diary-active.png"
       }
     ]
   },

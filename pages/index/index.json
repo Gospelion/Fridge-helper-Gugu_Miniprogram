@@ -1,4 +1,7 @@
 {
-  "navigationBarTitleText": "咕咕冰箱",
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "冰箱库存",
+  "backgroundColor": "#F2EBDD",
+  "backgroundTextStyle": "dark",
   "usingComponents": {}
 }

@@ -1,153 +1,201 @@
-<!-- 背景图层 -->
-<image src="/assets/background.jpg                                          " class="bg-image" mode="aspectFill" />
+<view class="paper-canvas"></view>
+<image src="/assets/background.jpg" class="paper-texture" mode="aspectFill" />
 
-<view class="page">
-  <!-- 模拟 OCR -->
-  <view class="card section-card">
-            <view class="section-header">
-      <text class="section-title">方式 A · 拍照识别</text>
-    </view>
-                <button class="btn-secondary ocr-btn" bindtap="handlePhotoAdd">
-      拍照上传菜肴图片
-      自动识别哦~
-    </button>
-    <view wx:if="{{recognizedFood}}" class="recognized-result">
-      识别到的食材：{{recognizedFood}}
-    </view>
+<scroll-view class="page" scroll-y="true" enhanced="true" show-scrollbar="false">
+  <view class="top-navigation section-enter">
+    <navigator class="back-link" open-type="navigateBack" hover-class="back-link-hover">返回库存</navigator>
+    <text class="top-caption">PANTRY INPUT</text>
   </view>
 
-  <!-- 手动输入 -->
-  <view class="card section-card">
-    <view class="section-header">
-      <text class="section-title">方式 B · 手动输入</text>
-      <text class="section-sub">支持名称、数量、单位、预计过期天数</text>
-    </view>
+  <view class="hero section-enter">
+    <text class="hero-title">添加食材</text>
+    <text class="hero-summary">拍照批量识别，或者手动填写一项</text>
+  </view>
 
-    <!-- 常用快捷标签 -->
-    <view class="quick-tags">
-      <view
-        class="tag"
-        wx:for="{{quickTags}}"
-        wx:key="name"
-        data-name="{{item.name}}"
-        bindtap="onQuickTagTap"
-      >
-        <text>{{item.name}}</text>
-      </view>
-    </view>
-
-    <view class="form">
-      <view class="form-item">
-        <view class="form-label-row">
-          <text class="form-label">食材名称</text>
-          <text class="form-hint">会自动识别<text class="form-hint-bold">食材种类</text>和<text class="form-hint-bold">保质期</text>哦~</text>
+  <view class="surface-shell section-enter section-delay-1">
+    <view class="surface-core scan-card">
+      <view class="section-header">
+        <view>
+          <text class="section-title">拍照识别</text>
+          <text class="section-sub">拍下食材，核对识别结果后批量加入</text>
         </view>
-        <input
-          class="form-input"
-          placeholder="例如：鸡蛋"
-          value="{{form.name}}"
-          bindinput="onNameInput"
-          bindblur="onNameBlur"
-        />
+        <text class="section-index">01</text>
       </view>
 
-      <view class="form-item">
-        <text class="form-label">数量</text>
-        <input
-          class="form-input"
-          type="number"
-          placeholder="例如：6"
-          value="{{form.quantity}}"
-          bindinput="onQuantityInput"
-        />
-      </view>
-
-      <view class="form-item">
-        <text class="form-label">单位</text>
-        <view class="picker" bindtap="openUnitSelector">
-          <text>{{units[form.unitIndex]}}</text>
-          <text class="picker-arrow">▼</text>
+      <button class="scan-btn" bindtap="handlePhotoAdd">
+        <view class="scan-icon-box">
+          <image class="scan-icon" src="/pages/add/assets/camera.png" mode="aspectFit" />
         </view>
-      </view>
-
-      <view class="form-item">
-        <text class="form-label">预计几天后过期</text>
-        <input
-          class="form-input"
-          type="number"
-          placeholder="例如：3（可不填）"
-          value="{{form.expiryDays}}"
-          bindinput="onExpiryDaysInput"
-        />
-      </view>
-
-      <view class="form-item">
-        <text class="form-label">食材分类</text>
-        <picker
-          mode="selector"
-          range="{{categories}}"
-          value="{{form.categoryIndex}}"
-          bindchange="onCategoryChange"
-        >
-          <view class="picker">
-            <text>{{categories[form.categoryIndex]}}</text>
-          </view>
-        </picker>
-      </view>
-
-                        <button class="btn-primary submit-btn" bindtap="onSubmit">
-        保存到冰箱
+        <text>拍照识别食材</text>
       </button>
-
-      
+      <view wx:if="{{recognizedFood}}" class="recognized-result">
+        <text class="recognized-title">已完成识别</text>
+        <text class="recognized-sub">请在确认面板核对名称、数量和单位</text>
+      </view>
+      <text class="scan-note">照片仅用于本次识别，完成后会清理临时云文件。</text>
     </view>
   </view>
-</view>
 
-<!-- AI 识别确认 -->
+  <view class="surface-shell section-enter section-delay-2">
+    <view class="surface-core manual-card">
+      <view class="section-header">
+        <view>
+          <text class="section-title">手动录入</text>
+          <text class="section-sub">填写名称、数量和预计保质期</text>
+        </view>
+        <text class="section-index">02</text>
+      </view>
+
+      <view class="quick-section">
+        <text class="quick-label">常用食材</text>
+        <scroll-view class="quick-tags" scroll-x="true" enable-flex="true" show-scrollbar="false">
+          <view class="quick-tags-inner">
+            <view
+              wx:for="{{quickTags}}"
+              wx:key="name"
+              class="tag {{form.name === item.name ? 'tag-active' : ''}}"
+              data-name="{{item.name}}"
+              bindtap="onQuickTagTap"
+              hover-class="tag-hover"
+            >
+              <text>{{item.name}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="form">
+        <view class="form-item">
+          <view class="form-label-row">
+            <text class="form-label">食材名称</text>
+            <text class="form-hint">自动推断分类与保质期</text>
+          </view>
+          <view class="field-control">
+            <input
+              class="form-input"
+              placeholder="例如：鸡蛋"
+              placeholder-class="field-placeholder"
+              value="{{form.name}}"
+              bindinput="onNameInput"
+              bindblur="onNameBlur"
+            />
+          </view>
+        </view>
+
+        <view class="form-row">
+          <view class="form-item form-item-flex">
+            <text class="form-label">数量</text>
+            <view class="field-control">
+              <input
+                class="form-input"
+                type="number"
+                placeholder="例如：6"
+                placeholder-class="field-placeholder"
+                value="{{form.quantity}}"
+                bindinput="onQuantityInput"
+              />
+            </view>
+          </view>
+
+          <view class="form-item form-item-unit">
+            <text class="form-label">单位</text>
+            <view class="field-control picker" bindtap="openUnitSelector" hover-class="field-control-hover">
+              <text class="field-value">{{units[form.unitIndex]}}</text>
+              <text class="field-action">选择</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="form-row">
+          <view class="form-item form-item-flex">
+            <text class="form-label">几天后过期</text>
+            <view class="field-control">
+              <input
+                class="form-input"
+                type="number"
+                placeholder="可不填"
+                placeholder-class="field-placeholder"
+                value="{{form.expiryDays}}"
+                bindinput="onExpiryDaysInput"
+              />
+            </view>
+          </view>
+
+          <view class="form-item form-item-category">
+            <text class="form-label">分类</text>
+            <picker mode="selector" range="{{categories}}" value="{{form.categoryIndex}}" bindchange="onCategoryChange">
+              <view class="field-control picker">
+                <text class="field-value category-value">{{categories[form.categoryIndex]}}</text>
+                <text class="field-action">选择</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+
+        <button class="submit-btn" bindtap="onSubmit">保存到冰箱</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="page-spacer"></view>
+</scroll-view>
+
 <view class="modal-mask {{showRecognitionReview ? 'active' : ''}}"></view>
 <view class="recognition-review {{showRecognitionReview ? 'active' : ''}}">
-  <view class="unit-selector-header">
+  <view class="sheet-header">
     <view>
-      <text class="unit-selector-title">确认识别结果</text>
-      <text class="review-subtitle">核对后再加入库存</text>
+      <text class="sheet-title">确认识别结果</text>
+      <text class="sheet-subtitle">核对后再加入库存</text>
     </view>
-    <view class="unit-selector-close" bindtap="closeRecognitionReview"><text>✕</text></view>
+    <view class="sheet-close" bindtap="closeRecognitionReview">关闭</view>
   </view>
   <scroll-view class="review-list" scroll-y="true">
     <view class="review-row" wx:for="{{recognitionDraft}}" wx:key="name">
-      <input class="review-name" value="{{item.name}}" data-index="{{index}}" data-field="name" bindinput="onRecognitionFieldInput" />
-      <input class="review-quantity" type="digit" value="{{item.quantity}}" data-index="{{index}}" data-field="quantity" bindinput="onRecognitionFieldInput" />
-      <picker mode="selector" range="{{units}}" value="{{item.unitIndex}}" data-index="{{index}}" bindchange="onRecognitionUnitChange">
-        <view class="review-unit">{{item.unit}} ▼</view>
-      </picker>
-      <text class="review-remove" data-index="{{index}}" bindtap="removeRecognitionItem">删除</text>
+      <view class="review-row-top">
+        <text class="review-index">{{index + 1}}</text>
+        <input class="review-name" value="{{item.name}}" data-index="{{index}}" data-field="name" bindinput="onRecognitionFieldInput" />
+        <text class="review-remove" data-index="{{index}}" bindtap="removeRecognitionItem">删除</text>
+      </view>
+      <view class="review-row-fields">
+        <view class="review-field">
+          <text class="review-label">数量</text>
+          <input class="review-quantity" type="digit" value="{{item.quantity}}" data-index="{{index}}" data-field="quantity" bindinput="onRecognitionFieldInput" />
+        </view>
+        <view class="review-field">
+          <text class="review-label">单位</text>
+          <picker mode="selector" range="{{units}}" value="{{item.unitIndex}}" data-index="{{index}}" bindchange="onRecognitionUnitChange">
+            <view class="review-unit">{{item.unit}}</view>
+          </picker>
+        </view>
+      </view>
     </view>
   </scroll-view>
   <view class="review-actions">
     <button class="review-cancel" bindtap="closeRecognitionReview">取消</button>
-    <button class="btn-primary review-confirm" bindtap="confirmRecognitionItems">确认加入冰箱</button>
+    <button class="review-confirm" bindtap="confirmRecognitionItems">确认加入冰箱</button>
   </view>
 </view>
 
-<!-- 单位选择器模态框 -->
 <view class="modal-mask {{showUnitSelector ? 'active' : ''}}" bindtap="closeUnitSelector"></view>
 <view class="unit-selector {{showUnitSelector ? 'active' : ''}}">
-  <view class="unit-selector-header">
-    <text class="unit-selector-title">选择单位</text>
-    <view class="unit-selector-close" bindtap="closeUnitSelector">
-      <text>✕</text>
+  <view class="sheet-header">
+    <view>
+      <text class="sheet-title">选择单位</text>
+      <text class="sheet-subtitle">用于库存数量和菜谱换算</text>
     </view>
+    <view class="sheet-close" bindtap="closeUnitSelector">关闭</view>
   </view>
   <view class="unit-grid">
-    <block wx:for="{{units}}" wx:key="*this">
-      <view
-        class="unit-card {{form.unitIndex === index ? 'selected' : ''}}"
-        bindtap="onUnitCardTap"
-        data-index="{{index}}"
-      >
-        <text class="unit-card-name">{{item}}</text>
-      </view>
-    </block>
+    <view
+      wx:for="{{units}}"
+      wx:key="*this"
+      class="unit-card {{form.unitIndex === index ? 'selected' : ''}}"
+      bindtap="onUnitCardTap"
+      data-index="{{index}}"
+      hover-class="unit-card-hover"
+    >
+      <text class="unit-card-index">{{index + 1}}</text>
+      <text class="unit-card-name">{{item}}</text>
+    </view>
   </view>
 </view>

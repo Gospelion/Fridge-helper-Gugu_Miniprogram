@@ -1,142 +1,158 @@
-<!-- 背景图层 -->
-<image src="/assets/background.jpg" class="bg-image" mode="aspectFill" />
+<view class="paper-canvas"></view>
+<image src="/assets/background.jpg" class="paper-texture" mode="aspectFill" />
 
-<view class="page">
-  <!-- 发布区域 -->
-  <view class="card publish-card">
-    <view class="section-header">
-      <text class="section-title">记录今日料理</text>
-      <text class="section-sub">选择或填写一道菜名，并上传图片</text>
+<scroll-view class="page" scroll-y="true" enhanced="true" show-scrollbar="false">
+  <view class="hero section-enter">
+    <text class="hero-eyebrow">COOKING NOTES</text>
+    <text class="hero-title">料理日记</text>
+    <view class="hero-summary">
+      <text>记录今天做了什么，也记下冰箱的变化</text>
+      <text class="hero-count">已记录 {{diaryList.length}} 道料理</text>
     </view>
+  </view>
 
-    <!-- 菜名选择 -->
-    <view class="form-item">
-      <text class="form-label">菜名</text>
-            <view class="picker" bindtap="openRecipeSelector">
-        <text>{{selectedRecipeName || '暂无可选菜谱'}}</text>
-        <text class="picker-arrow">▼</text>
+  <view class="surface-shell section-enter section-delay-1">
+    <view class="surface-core publish-card">
+      <view class="section-header">
+        <view>
+          <text class="section-title">记录一道料理</text>
+          <text class="section-sub">选择菜谱，或者写下自己的菜名</text>
+        </view>
+        <text class="section-index">01</text>
       </view>
-    </view>
 
-    <view class="form-item">
-      <text class="form-label">或自定义菜名</text>
-      <input
-        class="form-input"
-        placeholder="例如：西红柿鸡蛋面（可选）"
-        value="{{customTitle}}"
-        bindinput="onCustomTitleInput"
-      />
-    </view>
+      <view class="form-item">
+        <text class="form-label">菜谱</text>
+        <view class="field-control picker" bindtap="openRecipeSelector" hover-class="field-control-hover">
+          <text class="field-value {{selectedRecipeName ? '' : 'field-placeholder'}}">{{selectedRecipeName || '暂无可选菜谱'}}</text>
+          <text class="field-action">选择</text>
+        </view>
+      </view>
 
-    <!-- 图片上传 -->
-    <view class="form-item">
-      <text class="form-label">菜品照片（可选）</text>
-      <view class="image-list">
-        <block wx:for="{{imageList}}" wx:key="*this">
+      <view class="form-item">
+        <text class="form-label">自定义菜名</text>
+        <view class="field-control">
+          <input
+            class="form-input"
+            placeholder="例如：西红柿鸡蛋面（可选）"
+            placeholder-class="field-placeholder"
+            value="{{customTitle}}"
+            bindinput="onCustomTitleInput"
+          />
+        </view>
+      </view>
+
+      <view class="form-item photo-field">
+        <view class="form-label-row">
+          <text class="form-label">菜品照片</text>
+          <text class="form-optional">可选 · 最多 3 张</text>
+        </view>
+        <view class="image-list">
           <image
+            wx:for="{{imageList}}"
+            wx:key="*this"
             class="image-item"
             src="{{item}}"
             mode="aspectFill"
             data-index="{{index}}"
             bindtap="previewImage"
-          ></image>
-        </block>
-        <view class="image-add" bindtap="chooseImage">
-          <text>+</text>
+          />
+          <view class="image-add" bindtap="chooseImage" hover-class="image-add-hover">
+            <text class="image-add-title">添加照片</text>
+            <text class="image-add-sub">相册或拍摄</text>
+          </view>
         </view>
       </view>
-    </view>
 
-    <button class="btn-primary publish-btn" bindtap="onPublish">
-      完成烹饪并扣减库存
-    </button>
-    <text class="hint-text">
-      将根据菜谱用量扣减库存，重量单位会自动换算
-    </text>
-    <text class="hint-text">
-      菜名和照片将在发布前经过微信内容安全检测
-    </text>
+      <button class="publish-btn" bindtap="onPublish">完成烹饪并扣减库存</button>
+      <view class="form-notes">
+        <text>按菜谱用量扣减库存，重量单位会自动换算。</text>
+        <text>菜名和照片将在发布前经过微信内容安全检测。</text>
+      </view>
+    </view>
   </view>
 
-  <!-- 历史日记列表 -->
-  <view class="card diary-list-card">
-    <view class="section-header">
-      <text class="section-title">历史记录</text>
-      <text class="section-sub">看看你已经做过多少好吃的</text>
-    </view>
+  <view class="surface-shell section-enter section-delay-2">
+    <view class="surface-core diary-list-card">
+      <view class="section-header history-header">
+        <view>
+          <text class="section-title">历史记录</text>
+          <text class="section-sub">每一次下厨，都留下一页</text>
+        </view>
+        <text class="history-count">{{diaryList.length}} 条</text>
+      </view>
 
-    <block wx:if="{{diaryList.length}}">
-      <view class="diary-list">
-        <block wx:for="{{diaryList}}" wx:key="id">
-          <view class="diary-item">
+      <block wx:if="{{diaryList.length}}">
+        <view class="diary-list">
+          <view class="diary-item" wx:for="{{diaryList}}" wx:key="id">
             <view class="diary-header">
-              <text class="diary-title">{{item.title}}</text>
-              <view class="diary-header-actions">
+              <view class="diary-title-group">
                 <text class="diary-date">{{item.dateText}}</text>
-                <text class="diary-delete" data-id="{{item.id}}" catchtap="onDeleteDiary">删除</text>
+                <text class="diary-title">{{item.title}}</text>
               </view>
+              <text class="diary-delete" data-id="{{item.id}}" catchtap="onDeleteDiary">删除</text>
             </view>
-            <view class="diary-content">
-              <view class="diary-images" wx:if="{{item.imageList && item.imageList.length}}">
-                <image
-                  wx:for="{{item.imageList}}"
-                  wx:for-item="imagePath"
-                  wx:for-index="imageIndex"
-                  wx:key="*this"
-                  class="diary-image"
-                  src="{{imagePath}}"
-                  mode="aspectFill"
-                  data-entry-id="{{item.id}}"
-                  data-image-index="{{imageIndex}}"
-                  bindtap="previewDiaryImage"
-                ></image>
+
+            <view class="diary-images" wx:if="{{item.imageList && item.imageList.length}}">
+              <image
+                wx:for="{{item.imageList}}"
+                wx:for-item="imagePath"
+                wx:for-index="imageIndex"
+                wx:key="*this"
+                class="diary-image"
+                src="{{imagePath}}"
+                mode="aspectFill"
+                data-entry-id="{{item.id}}"
+                data-image-index="{{imageIndex}}"
+                bindtap="previewDiaryImage"
+              />
+            </view>
+
+            <view class="diary-meta">
+              <view wx:if="{{item.recipeName}}" class="meta-row">
+                <text class="meta-label">菜谱</text>
+                <text class="meta-value">{{item.recipeName}}</text>
               </view>
-              <view class="diary-meta">
-                <text wx:if="{{item.recipeName}}">
-                  菜谱：{{item.recipeName}}
-                </text>
-                <text wx:if="{{item.usedIngredientsText}}">
-                  消耗：{{item.usedIngredientsText}}
-                </text>
+              <view wx:if="{{item.usedIngredientsText}}" class="meta-row">
+                <text class="meta-label">消耗</text>
+                <text class="meta-value">{{item.usedIngredientsText}}</text>
               </view>
             </view>
           </view>
-            </block>
-  </view>
-</block>
+        </view>
+      </block>
 
-<block wx:else>
-  <view class="empty-state" bindtap="goAddPage" hover-class="empty-state-hover">
-    <image
-      class="empty-state-image"
-      src="/assets/empty-fridge.png"
-      mode="aspectFit"
-    ></image>
-    <text class="empty-state-title">还没有记录</text>
-    <text class="empty-state-desc">从今天开始记录你的第一道菜吧</text>
+      <view wx:else class="empty-state">
+        <image class="empty-state-image" src="/assets/empty-fridge.png" mode="aspectFit" />
+        <text class="empty-state-title">还没有记录</text>
+        <text class="empty-state-desc">完成第一道料理后，它会出现在这里</text>
+      </view>
+    </view>
   </view>
-</block>
-  </view>
-</view>
 
-<!-- 菜名选择器模态框 -->
+  <view class="page-spacer"></view>
+</scroll-view>
+
 <view class="modal-mask {{showRecipeSelector ? 'active' : ''}}" bindtap="closeRecipeSelector"></view>
 <view class="recipe-selector {{showRecipeSelector ? 'active' : ''}}">
   <view class="recipe-selector-header">
-    <text class="recipe-selector-title">选择菜名</text>
-    <view class="recipe-selector-close" bindtap="closeRecipeSelector">
-      <text>✕</text>
+    <view>
+      <text class="recipe-selector-title">选择菜谱</text>
+      <text class="recipe-selector-sub">选择后会按菜谱扣减库存</text>
     </view>
+    <view class="recipe-selector-close" bindtap="closeRecipeSelector">关闭</view>
   </view>
   <view class="recipe-grid">
-    <block wx:for="{{recipeNames}}" wx:key="*this">
-      <view
-        class="recipe-card {{selectedRecipeIndex === index ? 'selected' : ''}}"
-        bindtap="onRecipeCardTap"
-        data-index="{{index}}"
-      >
-        <text class="recipe-card-name">{{item}}</text>
-      </view>
-    </block>
+    <view
+      wx:for="{{recipeNames}}"
+      wx:key="*this"
+      class="recipe-card {{selectedRecipeIndex === index ? 'selected' : ''}}"
+      bindtap="onRecipeCardTap"
+      data-index="{{index}}"
+      hover-class="recipe-card-hover"
+    >
+      <text class="recipe-card-index">{{index + 1}}</text>
+      <text class="recipe-card-name">{{item}}</text>
+    </view>
   </view>
 </view>

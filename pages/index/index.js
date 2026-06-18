@@ -371,18 +371,18 @@ Page({
       return { expiryLabel: '未设置保质期', expiryStatusClass: 'expiry-unset' };
     }
     if (daysLeft < 0) {
-      return { expiryLabel: `🗑️ 已过期 ${Math.abs(daysLeft)} 天`, expiryStatusClass: 'expiry-expired' };
+      return { expiryLabel: `已过期 ${Math.abs(daysLeft)} 天`, expiryStatusClass: 'expiry-expired' };
     }
     if (daysLeft === 0) {
-      return { expiryLabel: `⚠️ 今天到期`, expiryStatusClass: 'expiry-urgent' };
+      return { expiryLabel: '今天到期', expiryStatusClass: 'expiry-urgent' };
     }
     if (daysLeft === 1) {
-      return { expiryLabel: `⏰ 明天到期`, expiryStatusClass: 'expiry-urgent' };
+      return { expiryLabel: '明天到期', expiryStatusClass: 'expiry-urgent' };
     }
     if (daysLeft <= 3) {
-      return { expiryLabel: `🟡 剩余 ${daysLeft} 天`, expiryStatusClass: 'expiry-warning' };
+      return { expiryLabel: `剩余 ${daysLeft} 天`, expiryStatusClass: 'expiry-warning' };
     }
-    return { expiryLabel: `🟢 剩余 ${daysLeft} 天`, expiryStatusClass: 'expiry-normal' };
+    return { expiryLabel: `剩余 ${daysLeft} 天`, expiryStatusClass: 'expiry-normal' };
   },
 
   onSearchInput(e) {

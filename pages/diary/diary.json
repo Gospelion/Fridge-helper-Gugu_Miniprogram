@@ -1,4 +1,7 @@
 {
-  "navigationBarTitleText": "咕咕日报",
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "料理日记",
+  "backgroundColor": "#F2EBDD",
+  "backgroundTextStyle": "dark",
   "usingComponents": {}
 }

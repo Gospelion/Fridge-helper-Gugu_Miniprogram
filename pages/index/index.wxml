@@ -1,218 +1,177 @@
-<!-- 背景图层 -->
-<image src="/assets/background.jpg" class="bg-image" mode="aspectFill" />
+<view class="paper-canvas"></view>
+<image src="/assets/background.jpg" class="paper-texture" mode="aspectFill" />
 
-<scroll-view class="page" scroll-y="true" style="height: 100vh;">
-  <!-- 今日推荐菜品 -->
-  <view class="card recommend-card">
-    <view class="recommend-header">
-      <view class="recommend-title-wrapper">
-        <text class="recommend-title">今日推荐</text>
-        <text class="recommend-sub">根据你冰箱里的食材智能生成</text>
+<scroll-view class="page" scroll-y="true" enhanced="true" show-scrollbar="false">
+  <view class="hero section-enter">
+    <view class="hero-copy">
+      <text class="hero-title">冰箱库存</text>
+      <view class="hero-summary">
+        <text>今天先处理</text>
+        <text class="hero-summary-count">{{dashboard.expired}} 件</text>
+        <text>过期食材</text>
       </view>
-      <image
-        class="recommend-refresh"
-        src="/assets/refresh.png"
-        mode="aspectFit"
-        bindtap="onRefreshRecommend"
-      />
     </view>
-    <view class="recommend-preferences">
-      <picker mode="selector" range="{{servingOptions}}" value="{{preferences.servingIndex}}" bindchange="onServingChange">
-        <text class="preference-chip">{{preferences.servings}} 人份</text>
-      </picker>
-      <picker mode="selector" range="{{difficultyOptions}}" value="{{preferences.difficultyIndex}}" bindchange="onDifficultyChange">
-        <text class="preference-chip">难度至 {{preferences.maxDifficulty}}</text>
-      </picker>
-      <view class="reminder-control"><text>临期提醒</text><switch checked="{{preferences.expiryReminderEnabled}}" bindchange="onReminderChange" color="#4CAF50" /></view>
+    <view class="mascot-frame">
+      <image src="/assets/hero-mascot.png" class="mascot-image" mode="aspectFill" />
     </view>
+  </view>
 
-    <block wx:if="{{recommendedRecipes.length > 0}}">
-      <view class="recommend-list">
-        <view class="recommend-item" wx:for="{{recommendedRecipes}}" wx:key="name">
-          <view class="recommend-body" bindtap="onRecommendTap" data-name="{{item.name}}" data-ingredients="{{item.ingredientsStr}}" hover-class="recommend-body-hover" hover-start-time="50" hover-stay-time="100">
-            <view class="recommend-content">
-              <text class="recipe-name">{{item.name}}</text>
-              <text class="recipe-favorite" data-name="{{item.name}}" catchtap="onToggleFavorite">{{item.isFavorite ? '★' : '☆'}}</text>
-              <view class="recipe-info">
-                <text class="recipe-meta">难度：{{item.difficulty}}</text>
-                <text class="recipe-meta">用到：{{item.ingredientsText}}</text>
-              </view>
-            </view>
-            <button
-              class="btn-primary recommend-btn"
+  <view class="surface-shell recommend-shell section-enter section-delay-1">
+    <view class="surface-core recommend-card">
+      <view class="section-header">
+        <text class="section-title">今日推荐</text>
+        <image class="recommend-refresh" src="/assets/refresh.png" mode="aspectFit" bindtap="onRefreshRecommend" />
+      </view>
+
+      <block wx:if="{{recommendedRecipes.length > 0}}">
+        <view class="recommend-list">
+          <view class="recommend-item" wx:for="{{recommendedRecipes}}" wx:key="name">
+            <view
+              class="recommend-body"
+              bindtap="onRecommendTap"
               data-name="{{item.name}}"
-              bindtap="goDiaryWithRecipe"
+              data-ingredients="{{item.ingredientsStr}}"
+              hover-class="recommend-body-hover"
             >
-              记录
-            </button>
+              <view class="recommend-content">
+                <text class="recipe-name">{{item.name}}</text>
+                <text class="recipe-meta">难度：{{item.difficulty}}</text>
+                <text class="recipe-meta recipe-ingredients">用到：{{item.ingredientsText}}</text>
+              </view>
+              <button class="recommend-btn" data-name="{{item.name}}" catchtap="goDiaryWithRecipe">记录</button>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <view wx:else class="recommend-empty" bindtap="goAddPage" hover-class="empty-state-hover">
+        <text class="empty-title">库存有点空</text>
+        <text class="empty-desc">添加食材后，就能生成今日推荐</text>
+        <button class="compact-btn">添加食材</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="surface-shell dashboard-shell section-enter section-delay-2">
+    <view class="surface-core dashboard-card">
+      <view class="dashboard-row">
+        <view class="dashboard-item">
+          <text class="dashboard-label">总库存</text>
+          <view class="dashboard-number-row">
+            <text class="dashboard-value">{{dashboard.total}}</text><text class="dashboard-unit">件</text>
+          </view>
+        </view>
+        <view class="dashboard-divider"></view>
+        <view class="dashboard-item dashboard-warning dashboard-link" bindtap="goExpiryDetail" data-type="warning" hover-class="dashboard-link-hover">
+          <text class="dashboard-label">临期</text>
+          <view class="dashboard-number-row">
+            <text class="dashboard-value">{{dashboard.warning}}</text><text class="dashboard-unit">件</text>
+          </view>
+        </view>
+        <view class="dashboard-divider"></view>
+        <view class="dashboard-item dashboard-expired dashboard-link" bindtap="goExpiryDetail" data-type="expired" hover-class="dashboard-link-hover">
+          <text class="dashboard-label">已过期</text>
+          <view class="dashboard-number-row">
+            <text class="dashboard-value">{{dashboard.expired}}</text><text class="dashboard-unit">件</text>
           </view>
         </view>
       </view>
-    </block>
-
-    <block wx:else>
-      <view class="recommend-empty" bindtap="goAddPage" hover-class="empty-state-hover">
-        <text class="empty-title">库存有点空啦～</text>
-        <text class="empty-desc">去添加一些食材，再来看看可以做什么吧</text>
-        <button class="btn-primary" size="mini">去添加食材</button>
-      </view>
-    </block>
-  </view>
-
-  <view class="card category-chart-card">
-    <text class="inventory-title">库存分类分布</text>
-    <view class="category-chart-row" wx:for="{{categoryStats}}" wx:key="name">
-      <text class="category-chart-label">{{item.name}}</text>
-      <view class="category-chart-track"><view class="category-chart-bar" style="width: {{item.percent}}%;"></view></view>
-      <text class="category-chart-count">{{item.count}} 批</text>
     </view>
   </view>
 
-  <!-- 首页数据概览看板 -->
-  <view class="card dashboard-card">
-    <view class="dashboard-row">
-      <view class="dashboard-item">
-        <text class="dashboard-label">📦 总库存数</text>
-        <text class="dashboard-value">{{dashboard.total}} 批 | {{dashboard.totalTypes}} 种</text>
+  <view class="surface-shell inventory-shell section-enter section-delay-3">
+    <view class="surface-core inventory-card">
+      <view class="inventory-header">
+        <text class="inventory-title">当前库存</text>
+        <text class="inventory-count">{{filteredInventory.length}} 种食材</text>
       </view>
-      <view class="dashboard-item dashboard-warning dashboard-link" bindtap="goExpiryDetail" data-type="warning" hover-class="dashboard-link-hover">
-        <text class="dashboard-label">⚠️ 临期警告</text>
-        <text class="dashboard-value">{{dashboard.warning}} 批 | {{dashboard.warningTypes}} 种</text>
-      </view>
-      <view class="dashboard-item dashboard-expired dashboard-link" bindtap="goExpiryDetail" data-type="expired" hover-class="dashboard-link-hover">
-        <text class="dashboard-label">🗑️ 已过期</text>
-        <text class="dashboard-value">{{dashboard.expired}} 批 | {{dashboard.expiredTypes}} 种</text>
-      </view>
-    </view>
-  </view>
 
-  <!-- 库存列表（卡片流 + 顶部筛选） -->
-  <view class="card inventory-card">
-    <view class="inventory-header">
-      <text class="inventory-title">当前库存</text>
-
-      <!-- 搜索框 -->
       <view class="search-bar">
+        <text class="search-label">搜索</text>
         <input
           class="search-input"
-          placeholder="搜索食材..."
+          placeholder="搜索食材"
+          placeholder-class="search-placeholder"
           value="{{searchKey}}"
           bindinput="onSearchInput"
           confirm-type="search"
         />
-        <text wx:if="{{searchKey}}" class="search-clear" bindtap="onSearchClear">✕</text>
+        <text wx:if="{{searchKey}}" class="search-clear" bindtap="onSearchClear">清除</text>
       </view>
 
-      <text class="inventory-count">{{filteredInventory.length}} 种食材</text>
-    </view>
-
-    <!-- 顶部分类筛选栏 -->
-    <scroll-view
-      class="filter-bar"
-      scroll-x="true"
-      enable-flex="true"
-      show-scrollbar="false"
-    >
-      <view class="filter-content">
-        <view
-          wx:for="{{categories}}"
-          wx:key="*this"
-          class="filter-tag {{activeCategory === item ? 'filter-tag-active' : ''}}"
-          data-name="{{item}}"
-          bindtap="onFilterTap"
-        >
-          <text class="filter-tag-text">{{item}}</text>
+      <scroll-view class="filter-bar" scroll-x="true" enable-flex="true" show-scrollbar="false">
+        <view class="filter-content">
+          <view
+            wx:for="{{categories}}"
+            wx:key="*this"
+            class="filter-tag {{activeCategory === item ? 'filter-tag-active' : ''}}"
+            data-name="{{item}}"
+            bindtap="onFilterTap"
+          >
+            <text>{{item}}</text>
+          </view>
         </view>
-      </view>
-    </scroll-view>
+      </scroll-view>
 
-    <block wx:if="{{filteredInventory.length}}">
-      <view class="inventory-list">
-        <block wx:for="{{filteredInventory}}" wx:key="id">
-          <!-- 
-            movable-area: 可视窗口，宽度必须固定为屏幕宽 
-            不要在这里设 width: 100%，最好由 CSS 控制
-          -->
-          <movable-area class="swipe-area">
-            <movable-view
-              class="swipe-view"
-              direction="horizontal"
-              damping="20"
-              friction="2"
-              speed="2"
-              inertia="true"
-              out-of-bounds="true"
-              x="{{swipeOffsets[item.id] || 0}}"
-              data-id="{{item.id}}"
-              bindchange="onItemSwipeChange"
-              bindtouchend="onItemSwipeEnd"
-            >
-              <!-- 
-                swipe-inner: 承载 [卡片] + [删除按钮] 
-                它的宽度会自动撑开 movable-view
-              -->
-              <view class="swipe-inner">
-                
-                <!-- 左侧：食材卡片 -->
-                <view
-                  class="ingredient-card {{item.categoryBgClass}} {{item.isNewlyAdded ? 'highlight-new' : ''}}"
-                  bindtap="onInventoryTap"
-                  bindlongpress="onInventoryLongPress"
-                  data-id="{{item.id}}"
-                  data-name="{{item.name}}"
-                  data-quantity="{{item.quantity}}"
-                  data-unit="{{item.unit}}"
-                >
-                  <view class="ingredient-header">
-                    <text class="ingredient-name">{{item.name}}</text>
-                    <text class="ingredient-quantity">{{item.quantity}}{{item.unit}}</text>
-                  </view>
-                  <view class="ingredient-footer">
-                    <view class="ingredient-expiry">
-                      <text class="ingredient-expiry-text {{item.expiryStatusClass}}">
-                        {{item.expiryLabel}}
-                      </text>
+      <block wx:if="{{filteredInventory.length}}">
+        <view class="inventory-list">
+          <block wx:for="{{filteredInventory}}" wx:key="id">
+            <movable-area class="swipe-area">
+              <movable-view
+                class="swipe-view"
+                direction="horizontal"
+                damping="20"
+                friction="2"
+                speed="2"
+                inertia="true"
+                out-of-bounds="true"
+                x="{{swipeOffsets[item.id] || 0}}"
+                data-id="{{item.id}}"
+                bindchange="onItemSwipeChange"
+                bindtouchend="onItemSwipeEnd"
+              >
+                <view class="swipe-inner">
+                  <view
+                    class="ingredient-card {{item.categoryBgClass}} {{item.isNewlyAdded ? 'highlight-new' : ''}}"
+                    bindtap="onInventoryTap"
+                    bindlongpress="onInventoryLongPress"
+                    data-id="{{item.id}}"
+                    data-name="{{item.name}}"
+                    data-quantity="{{item.quantity}}"
+                    data-unit="{{item.unit}}"
+                  >
+                    <view class="ingredient-copy">
+                      <text class="ingredient-name">{{item.name}}</text>
+                      <text class="ingredient-expiry-text {{item.expiryStatusClass}}">{{item.expiryLabel}}</text>
                     </view>
-                    <text class="ingredient-category-tag">{{item.category}}</text>
+                    <view class="ingredient-meta">
+                      <text class="ingredient-quantity">{{item.quantity}}{{item.unit}}</text>
+                      <text class="ingredient-category-tag">{{item.category}}</text>
+                    </view>
                   </view>
+                  <view class="swipe-delete" bindtap="onSwipeDeleteTap" data-id="{{item.id}}" data-name="{{item.name}}">删除</view>
                 </view>
+              </movable-view>
+            </movable-area>
+          </block>
+        </view>
+      </block>
 
-                <!-- 右侧：红色删除按钮 -->
-                <view
-                  class="swipe-delete"
-                  bindtap="onSwipeDeleteTap"
-                  data-id="{{item.id}}"
-                  data-name="{{item.name}}"
-                >
-                  删除
-                </view>
-                
-              </view>
-            </movable-view>
-          </movable-area>
-        </block>
-      </view>
-    </block>
-
-    <block wx:else>
-      <view class="empty-state">
-        <image
-          class="empty-state-image"
-          src="/assets/empty-fridge.png"
-          mode="aspectFit"
-        ></image>
+      <view wx:else class="empty-state">
+        <image class="empty-state-image" src="/assets/empty-fridge.png" mode="aspectFit" />
         <text class="empty-state-title">{{searchKey ? '没有找到匹配的食材' : '冰箱还是空的'}}</text>
-        <text class="empty-state-desc">{{searchKey ? '试试其他关键词吧' : '开始添加第一批食材吧'}}</text>
-        <button wx:if="{{searchKey}}" class="btn-primary" size="mini" bindtap="onSearchClear">清除搜索</button>
+        <text class="empty-state-desc">{{searchKey ? '换个关键词试试' : '添加第一批食材，开始管理库存'}}</text>
+        <button wx:if="{{searchKey}}" class="compact-btn" bindtap="onSearchClear">清除搜索</button>
       </view>
-    </block>
+    </view>
   </view>
 
-  <!-- 底部添加食材悬浮按钮 -->
-  <view class="fab-wrapper">
-    <button class="fab-btn" bindtap="goAddPage">+</button>
-  </view>
+  <view class="page-spacer"></view>
 </scroll-view>
+
+<view class="fab-wrapper">
+  <button class="fab-btn" bindtap="goAddPage">+</button>
+</view>
 
 <!-- 编辑食材模态框 -->
 <view class="modal-mask {{showEditModal ? 'active' : ''}}" bindtap="closeEditModal"></view>
