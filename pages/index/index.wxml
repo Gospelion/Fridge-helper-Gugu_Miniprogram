@@ -51,10 +51,10 @@
     </block>
 
     <block wx:else>
-      <view class="recommend-empty">
+      <view class="recommend-empty" bindtap="goAddPage" hover-class="empty-state-hover">
         <text class="empty-title">库存有点空啦～</text>
         <text class="empty-desc">去添加一些食材，再来看看可以做什么吧</text>
-        <button class="btn-primary" size="mini" bindtap="goAddPage">去添加食材</button>
+        <button class="btn-primary" size="mini">去添加食材</button>
       </view>
     </block>
   </view>
@@ -75,11 +75,11 @@
         <text class="dashboard-label">📦 总库存数</text>
         <text class="dashboard-value">{{dashboard.total}} 批 | {{dashboard.totalTypes}} 种</text>
       </view>
-      <view class="dashboard-item dashboard-warning">
+      <view class="dashboard-item dashboard-warning dashboard-link" bindtap="goExpiryDetail" data-type="warning" hover-class="dashboard-link-hover">
         <text class="dashboard-label">⚠️ 临期警告</text>
         <text class="dashboard-value">{{dashboard.warning}} 批 | {{dashboard.warningTypes}} 种</text>
       </view>
-      <view class="dashboard-item dashboard-expired">
+      <view class="dashboard-item dashboard-expired dashboard-link" bindtap="goExpiryDetail" data-type="expired" hover-class="dashboard-link-hover">
         <text class="dashboard-label">🗑️ 已过期</text>
         <text class="dashboard-value">{{dashboard.expired}} 批 | {{dashboard.expiredTypes}} 种</text>
       </view>
@@ -161,6 +161,7 @@
                   data-id="{{item.id}}"
                   data-name="{{item.name}}"
                   data-quantity="{{item.quantity}}"
+                  data-unit="{{item.unit}}"
                 >
                   <view class="ingredient-header">
                     <text class="ingredient-name">{{item.name}}</text>
@@ -239,6 +240,7 @@
         placeholder="请输入数量"
         value="{{editForm.quantity}}"
         bindinput="onEditQuantityInput"
+        cursor-spacing="24"
       />
     </view>
 
@@ -260,6 +262,7 @@
         placeholder="请输入天数"
         value="{{editForm.expiryDays}}"
         bindinput="onEditExpiryDaysInput"
+        cursor-spacing="24"
       />
     </view>
   </view>

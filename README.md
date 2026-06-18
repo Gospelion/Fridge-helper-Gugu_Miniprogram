@@ -26,6 +26,7 @@
 │  └─ storage.js             # 本地存储、迁移和云同步
 ├─ cloudfunctions/
 │  ├─ recognizeFood/         # AI 图片识别
+│  ├─ contentSecurity/       # 菜名与照片内容安全检测
 │  └─ syncData/              # 按 OpenID 同步用户数据
 ├─ config/cloud.js           # 微信云环境 ID
 ├─ tests/                    # Node.js 领域测试
@@ -38,9 +39,10 @@
 1. 使用微信开发者工具导入仓库。
 2. 在 `config/cloud.js` 中填写目标微信云环境 ID。
 3. 创建云数据库集合 `fridge_user_data`。客户端无需直接读写该集合，数据通过 `syncData` 云函数访问。
-4. 上传并部署 `syncData` 和 `recognizeFood`，选择“云端安装依赖”。
+4. 上传并部署 `syncData`、`recognizeFood` 和 `contentSecurity`，选择“云端安装依赖”。
 5. 在 `recognizeFood` 云函数配置中添加环境变量 `DASHSCOPE_API_KEY`。
-6. 编译后分别验证手动添加、拍照识别确认、云同步、菜谱扣减和日记图片。
+6. 确认小程序已具备调用微信内容安全接口的权限，然后验证正常图片可以发布、风险内容会被阻止。
+7. 编译后分别验证手动添加、拍照识别确认、云同步、菜谱扣减和日记图片。
 
 > 安全提示：历史版本曾把 DashScope 密钥写入源码。部署前必须在 DashScope 控制台吊销旧密钥并创建新密钥；删除 Git 当前版本中的字符串不能使旧密钥失效。
 

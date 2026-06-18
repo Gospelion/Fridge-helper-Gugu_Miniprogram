@@ -25,15 +25,15 @@
 
     <!-- 常用快捷标签 -->
     <view class="quick-tags">
-      <text
+      <view
         class="tag"
         wx:for="{{quickTags}}"
         wx:key="name"
         data-name="{{item.name}}"
         bindtap="onQuickTagTap"
       >
-        {{item.name}}
-      </text>
+        <text>{{item.name}}</text>
+      </view>
     </view>
 
     <view class="form">

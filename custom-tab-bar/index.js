@@ -1,5 +1,6 @@
 Component({
   data: {
+    hidden: false,
     selected: 0,
     color: "#999999",
     selectedColor: "#4CAF50",

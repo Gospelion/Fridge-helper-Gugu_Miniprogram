@@ -53,6 +53,9 @@
     <text class="hint-text">
       将根据菜谱用量扣减库存，重量单位会自动换算
     </text>
+    <text class="hint-text">
+      菜名和照片将在发布前经过微信内容安全检测
+    </text>
   </view>
 
   <!-- 历史日记列表 -->
@@ -103,7 +106,7 @@
 </block>
 
 <block wx:else>
-  <view class="empty-state">
+  <view class="empty-state" bindtap="goAddPage" hover-class="empty-state-hover">
     <image
       class="empty-state-image"
       src="/assets/empty-fridge.png"

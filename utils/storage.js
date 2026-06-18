@@ -1,34 +1,11 @@
 // utils/storage.js
 const STORAGE_KEY = 'fridge_chef_data';
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const { clone, consumeInventory, migrateData, normalizeRecipes } = require('./domain');
 
-/**
- * 默认 Mock 数据
- */
 const defaultData = {
   schemaVersion: SCHEMA_VERSION,
-  inventory: [
-    {
-      id: 1,
-      name: '鸡蛋',
-      quantity: 6,
-      unit: '个',
-      expiryDate: '2026-03-10',
-      // 预设分类：农产品
-      category: '农产品'
-    },
-    {
-      id: 2,
-      name: '西红柿',
-      quantity: 2,
-      unit: '个',
-      expiryDate: '2026-03-05',
-      // 预设分类：蔬菜
-      category: '蔬菜'
-    }
-  ],
-    // 不推荐的食材记录：{ ingredientName: '鸡蛋', expireAt: 1710000000000 }
+  inventory: [],
   excludedIngredients: [],
   recipes: [
     // 鸡蛋类
@@ -99,6 +76,26 @@ const defaultData = {
 let cache = null;
 let cloudSyncTimer = null;
 
+const LEGACY_MOCK_ITEMS = [
+  { id: 1, name: '鸡蛋', quantity: 6, unit: '个', expiryDate: '2026-03-10', category: '农产品' },
+  { id: 2, name: '西红柿', quantity: 2, unit: '个', expiryDate: '2026-03-05', category: '蔬菜' }
+];
+
+function removeLegacyMockInventory(data, sourceVersion) {
+  if (Number(sourceVersion || 0) >= SCHEMA_VERSION) return data;
+  data.inventory = (data.inventory || []).filter((item) => !LEGACY_MOCK_ITEMS.some((mock) =>
+    Object.keys(mock).every((key) => item[key] === mock[key])
+  ));
+  return data;
+}
+
+function migrateStoredData(raw) {
+  const migrated = migrateData(raw, defaultData, SCHEMA_VERSION);
+  removeLegacyMockInventory(migrated, raw && raw.schemaVersion);
+  migrated.recipes = normalizeRecipes(migrated.recipes);
+  return migrated;
+}
+
 function canSyncCloud() {
   return typeof wx !== 'undefined' && wx.cloud && typeof wx.cloud.callFunction === 'function';
 }
@@ -135,9 +132,8 @@ function saveData(data, options = {}) {
 function initialize() {
   if (cache) return clone(cache);
   const raw = wx.getStorageSync(STORAGE_KEY) || null;
-  const migrated = migrateData(raw, defaultData, SCHEMA_VERSION);
-  migrated.recipes = normalizeRecipes(migrated.recipes);
-  if (!migrated.updatedAt) migrated.updatedAt = Date.now();
+  const migrated = migrateStoredData(raw);
+  if (!migrated.updatedAt) migrated.updatedAt = 0;
   saveData(migrated, { sync: false, touch: false });
   return clone(migrated);
 }
@@ -152,8 +148,7 @@ async function syncWithCloud() {
   const remote = response.result && response.result.data;
 
   if (remote && Number(remote.updatedAt) > Number(local.updatedAt || 0)) {
-    const migrated = migrateData(remote, defaultData, SCHEMA_VERSION);
-    migrated.recipes = normalizeRecipes(migrated.recipes);
+    const migrated = migrateStoredData(remote);
     const localImages = new Map(local.diary.map((entry) => [entry.id, entry.imageList || []]));
     migrated.diary = migrated.diary.map((entry) => ({
       ...entry,

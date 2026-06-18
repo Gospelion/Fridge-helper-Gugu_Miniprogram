@@ -1,5 +1,6 @@
 const cloud = require('wx-server-sdk')
 const axios = require('axios')
+const API_VERSION = 2
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -46,7 +47,7 @@ exports.main = async (event) => {
     const res = await axios.post(
       "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
       {
-        model: "qwen3.5-plus",
+        model: "qwen3.7-plus",
         messages: [
           {
             role: "user",
@@ -97,7 +98,11 @@ exports.main = async (event) => {
       }
     )
 
-    const result = res.data?.choices?.[0]?.message?.content || ""
+    const choice = res.data?.choices?.[0] || {}
+    const content = choice.message?.content || ""
+    const result = Array.isArray(content)
+      ? content.map((block) => typeof block === 'string' ? block : block?.text || block?.content || '').filter(Boolean).join('\n')
+      : content
 
     if (!result) {
       return {
@@ -108,7 +113,14 @@ exports.main = async (event) => {
 
     return { 
       success: true,
-      result 
+      result,
+      meta: {
+        apiVersion: API_VERSION,
+        model: res.data?.model || "qwen3.7-plus",
+        finishReason: choice.finish_reason || "",
+        contentType: Array.isArray(content) ? "array" : typeof content,
+        contentLength: typeof result === 'string' ? result.length : 0
+      }
     }
 
   } catch (e) {

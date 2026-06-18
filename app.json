@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/expiry-detail/expiry-detail",
     "pages/add/add",
     "pages/diary/diary"
   ],

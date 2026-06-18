@@ -136,16 +136,35 @@ function normalizeFoods(value) {
   const candidates = Array.isArray(value) ? value : [value];
   return candidates.flatMap((food) => {
     if (!food || typeof food !== 'object') return [];
-    const name = String(food.name || '').trim();
-    const quantity = Number(food.quantity);
+    const name = String(food.name || food.foodName || food.ingredient || food['食材'] || food['名称'] || '').trim();
+    const quantity = Number(food.quantity ?? food.count ?? food['数量']);
     if (!name || !Number.isFinite(quantity) || quantity <= 0) return [];
-    return [{ name, quantity, unit: normalizeUnit(String(food.unit || '').trim()) }];
+    return [{ name, quantity, unit: normalizeUnit(String(food.unit || food['单位'] || '').trim()) }];
   });
 }
 
 function parseRecognizedFoods(input) {
-  if (Array.isArray(input) || (input && typeof input === 'object')) {
-    return normalizeFoods(input);
+  if (Array.isArray(input)) {
+    const foods = normalizeFoods(input);
+    if (foods.length) return foods;
+    const blockText = input
+      .map((item) => typeof item === 'string' ? item : (item && (item.text || item.content)) || '')
+      .filter(Boolean)
+      .join('\n');
+    return blockText ? parseRecognizedFoods(blockText) : [];
+  }
+
+  if (input && typeof input === 'object') {
+    const foods = normalizeFoods(input);
+    if (foods.length) return foods;
+    for (const key of ['foods', 'items', 'ingredients', 'data', 'result']) {
+      if (input[key]) {
+        const nested = parseRecognizedFoods(input[key]);
+        if (nested.length) return nested;
+      }
+    }
+    const objectText = input.text || input.content;
+    return objectText ? parseRecognizedFoods(objectText) : [];
   }
 
   const text = String(input || '').trim();
@@ -171,8 +190,11 @@ function parseRecognizedFoods(input) {
     .map((segment) => segment.trim())
     .flatMap((segment) => {
       const match = segment.match(/^(.+?)\s*(\d+(?:\.\d+)?)\s*(个|kg|公斤|千克|包|g|克|斤|份)?$/i);
-      if (!match) return [];
-      return normalizeFoods({ name: match[1], quantity: match[2], unit: match[3] });
+      if (match) return normalizeFoods({ name: match[1], quantity: match[2], unit: match[3] });
+      const nameOnly = segment.replace(/^[-*\d.、\s]+/, '').trim();
+      const looksLikeIngredient = /^[\u4e00-\u9fa5A-Za-z0-9（）()\s-]{1,20}$/.test(nameOnly) &&
+        !/(识别结果|食材如下|无法识别|图片|没有食材|未识别)/.test(nameOnly);
+      return looksLikeIngredient ? normalizeFoods({ name: nameOnly, quantity: 1, unit: '个' }) : [];
     });
 }
 

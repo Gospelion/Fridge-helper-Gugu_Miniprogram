@@ -73,13 +73,23 @@
 }
 
 .tag {
-  padding: 8rpx 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
   border-radius: 999rpx;
   border: 1rpx solid #e0e0e0;
   font-size: 24rpx;
+  line-height: 1;
   color: #555555;
   margin-right: 12rpx;
   margin-bottom: 12rpx;
+}
+
+.tag text {
+  line-height: 1;
 }
 
 /* 表单 */

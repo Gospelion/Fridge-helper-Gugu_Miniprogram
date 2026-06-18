@@ -132,6 +132,10 @@ Page({
     });
   },
 
+  goAddPage() {
+    wx.navigateTo({ url: '/pages/add/add' });
+  },
+
   chooseImage() {
     const remaining = 3 - this.data.imageList.length;
     if (remaining <= 0) {
@@ -170,7 +174,7 @@ Page({
     return new Promise((resolve, reject) => {
       wx.compressImage({
         src: filePath,
-        quality: 75,
+        quality: 45,
         success: (res) => resolve(res.tempFilePath),
         fail: reject
       });
@@ -193,17 +197,63 @@ Page({
     });
   },
 
-  async persistImages(paths) {
+  async persistCompressedImages(paths) {
     const savedPaths = [];
     try {
       for (const path of paths) {
-        const compressedPath = await this.compressImage(path);
-        savedPaths.push(await this.saveFile(compressedPath));
+        savedPaths.push(await this.saveFile(path));
       }
       return savedPaths;
     } catch (error) {
       this.removeSavedFiles(savedPaths);
       throw error;
+    }
+  },
+
+  async checkDiaryContent(title, imagePaths) {
+    const compressedPaths = [];
+    const fileIDs = [];
+    try {
+      for (let index = 0; index < imagePaths.length; index += 1) {
+        const compressedPath = await this.compressImage(imagePaths[index]);
+        compressedPaths.push(compressedPath);
+        const uploadResult = await wx.cloud.uploadFile({
+          cloudPath: `diary-security/${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}.jpg`,
+          filePath: compressedPath
+        });
+        fileIDs.push(uploadResult.fileID);
+      }
+
+      const response = await wx.cloud.callFunction({
+        name: 'contentSecurity',
+        data: { text: title, fileIDs }
+      });
+      const result = response.result;
+      if (!result || result.success === false) {
+        const error = new Error(result?.error || '内容安全检测服务暂不可用');
+        error.userMessage = '安全检测失败，请稍后重试';
+        throw error;
+      }
+      if (!result.passed) {
+        const error = new Error(result.reason || '内容未通过安全检测');
+        if (result.reason === 'review') {
+          error.userMessage = '内容需要人工复核，暂不能发布';
+        } else if (result.reason === 'image_too_large') {
+          error.userMessage = '图片过大，请压缩后重试';
+        } else {
+          error.userMessage = '内容未通过安全检测，请修改后重试';
+        }
+        throw error;
+      }
+      return compressedPaths;
+    } finally {
+      if (fileIDs.length) {
+        try {
+          await wx.cloud.deleteFile({ fileList: fileIDs });
+        } catch (cleanupError) {
+          console.warn('清理安全检测临时文件失败');
+        }
+      }
     }
   },
 
@@ -235,9 +285,10 @@ Page({
       : [];
 
     let savedImages = [];
-    wx.showLoading({ title: '正在保存', mask: true });
+    wx.showLoading({ title: '安全检测中', mask: true });
     try {
-      savedImages = await this.persistImages(imageList);
+      const checkedImages = await this.checkDiaryContent(finalTitle, imageList);
+      savedImages = await this.persistCompressedImages(checkedImages);
       const publishResult = storage.publishDiary({
         title: finalTitle,
         recipeName: recipe ? recipe.name : '',
@@ -259,7 +310,7 @@ Page({
     } catch (error) {
       console.error('保存日记失败:', error);
       this.removeSavedFiles(savedImages);
-      wx.showToast({ title: '保存失败，请重试', icon: 'none' });
+      wx.showToast({ title: error.userMessage || '保存失败，请重试', icon: 'none' });
     } finally {
       wx.hideLoading();
     }

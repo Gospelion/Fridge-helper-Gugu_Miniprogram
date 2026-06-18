@@ -1,0 +1,26 @@
+<image src="/assets/background.jpg" class="bg-image" mode="aspectFill" />
+
+<view class="page">
+  <view class="summary {{type}}">
+    <text class="summary-title">{{title}}</text>
+    <text class="summary-count">共 {{items.length}} 批</text>
+  </view>
+
+  <view wx:if="{{items.length}}" class="detail-list">
+    <view class="detail-card" wx:for="{{items}}" wx:key="id">
+      <view class="detail-main">
+        <text class="item-name">{{item.name}}</text>
+        <text class="item-quantity">{{item.quantity}}{{item.unit}}</text>
+      </view>
+      <view class="detail-meta">
+        <text class="expiry-label {{type}}">{{item.expiryLabel}}</text>
+        <text class="expiry-date">到期日 {{item.expiryDate}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="empty-state">
+    <text class="empty-title">暂无{{title}}</text>
+    <text class="empty-desc">当前库存状态很好，继续保持</text>
+  </view>
+</view>

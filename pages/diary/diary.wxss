@@ -193,6 +193,7 @@
   text-align: center;
   padding: 60rpx 0;
 }
+.empty-state-hover { opacity: 0.72; }
 
 .empty-state-image {
   width: 200rpx;

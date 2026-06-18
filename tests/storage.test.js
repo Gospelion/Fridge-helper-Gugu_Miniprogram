@@ -23,7 +23,7 @@ test('storage migrates once, batches writes, and publishes diary atomically', ()
   const storage = require('../utils/storage');
 
   const initialized = storage.initialize();
-  assert.equal(initialized.schemaVersion, 3);
+  assert.equal(initialized.schemaVersion, 4);
   assert.ok(initialized.recipes.length > 0);
   assert.equal(writeCount, 1);
 
@@ -44,6 +44,70 @@ test('storage migrates once, batches writes, and publishes diary atomically', ()
   assert.equal(storage.getSnapshot().inventory.some((item) => item.id === 1), false);
   assert.equal(storage.getDiary()[0].title, '蒸蛋');
   assert.equal(writeCount, 3);
+
+  delete global.wx;
+});
+
+test('fresh installs start empty and pull existing cloud data before pushing', async () => {
+  let stored = null;
+  const calls = [];
+  global.wx = {
+    getStorageSync: () => stored,
+    setStorageSync: (key, value) => {
+      stored = JSON.parse(JSON.stringify(value));
+    },
+    cloud: {
+      callFunction: async (request) => {
+        calls.push(request);
+        return {
+          result: {
+            success: true,
+            data: request.data.action === 'pull' ? {
+              schemaVersion: 4,
+              inventory: [{ id: 99, name: '苹果', quantity: 1, unit: '个' }],
+              updatedAt: 100
+            } : null
+          }
+        };
+      }
+    }
+  };
+
+  const storagePath = require.resolve('../utils/storage');
+  delete require.cache[storagePath];
+  const storage = require('../utils/storage');
+
+  assert.deepEqual(storage.initialize().inventory, []);
+  assert.equal(storage.getSnapshot().updatedAt, 0);
+  const result = await storage.syncWithCloud();
+  assert.equal(result.source, 'cloud');
+  assert.equal(storage.getInventory()[0].name, '苹果');
+  assert.deepEqual(calls.map((call) => call.data.action), ['pull']);
+
+  delete global.wx;
+});
+
+test('schema migration removes only the exact legacy mock inventory', () => {
+  let stored = {
+    schemaVersion: 3,
+    inventory: [
+      { id: 1, name: '鸡蛋', quantity: 6, unit: '个', expiryDate: '2026-03-10', category: '农产品' },
+      { id: 2, name: '西红柿', quantity: 2, unit: '个', expiryDate: '2026-03-05', category: '蔬菜' },
+      { id: 3, name: '用户食材', quantity: 1, unit: '个' }
+    ]
+  };
+  global.wx = {
+    getStorageSync: () => stored,
+    setStorageSync: (key, value) => {
+      stored = JSON.parse(JSON.stringify(value));
+    }
+  };
+
+  const storagePath = require.resolve('../utils/storage');
+  delete require.cache[storagePath];
+  const storage = require('../utils/storage');
+
+  assert.deepEqual(storage.initialize().inventory.map((item) => item.name), ['用户食材']);
 
   delete global.wx;
 });

@@ -193,10 +193,27 @@ Page({
       if (!response.result || response.result.success === false) {
         throw new Error(response.result?.error || '云函数返回结果为空');
       }
+      if (!response.result.meta || response.result.meta.apiVersion !== 2) {
+        throw new Error('云函数版本过旧，请重新上传部署 recognizeFood');
+      }
 
       const rawResult = response.result.result || '';
       const foods = parseRecognizedFoods(rawResult);
-      if (!foods.length) throw new Error('未识别到有效食材');
+      if (!foods.length) {
+        let serializedResult = '';
+        try {
+          serializedResult = JSON.stringify(rawResult);
+        } catch (serializationError) {
+          serializedResult = String(rawResult);
+        }
+        console.error('AI 原始返回无法解析:', {
+          rawType: Array.isArray(rawResult) ? 'array' : typeof rawResult,
+          rawLength: serializedResult.length,
+          rawResult: serializedResult.slice(0, 1000),
+          meta: response.result.meta || null
+        });
+        throw new Error('未识别到有效食材');
+      }
       recognizedCount = foods.length;
       this.setData({
         recognizedFood: rawResult,

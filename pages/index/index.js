@@ -43,7 +43,8 @@ Page({
     // 更新自定义 tabBar 选中状态
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({
-        selected: 0
+        selected: 0,
+        hidden: false
       });
     }
     const syncReady = getApp().globalData.syncReady;
@@ -121,6 +122,13 @@ Page({
   goAddPage() {
     wx.navigateTo({
       url: '/pages/add/add'
+    });
+  },
+
+  goExpiryDetail(e) {
+    const type = e.currentTarget.dataset.type === 'expired' ? 'expired' : 'warning';
+    wx.navigateTo({
+      url: `/pages/expiry-detail/expiry-detail?type=${type}`
     });
   },
 
@@ -446,6 +454,13 @@ Page({
       },
       showEditModal: true
     });
+    this.setTabBarHidden(true);
+  },
+
+  setTabBarHidden(hidden) {
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ hidden });
+    }
   },
 
   /**
@@ -456,6 +471,7 @@ Page({
       showEditModal: false,
       showEditUnitSelector: false
     });
+    this.setTabBarHidden(false);
   },
 
   /**
@@ -537,11 +553,16 @@ Page({
 
     // 更新食材
     const unit = this.data.units[unitIndex] || '个';
-    storage.updateItem(id, {
+    const updated = storage.updateItem(id, {
       quantity: num,
       unit,
       expiryDate
     });
+
+    if (!updated) {
+      wx.showToast({ title: '食材不存在，请刷新后重试', icon: 'none' });
+      return;
+    }
 
     wx.showToast({
       title: '已保存',

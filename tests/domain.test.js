@@ -61,6 +61,18 @@ test('parseRecognizedFoods accepts JSON, markdown JSON, Chinese text, and reject
   assert.deepEqual(parseRecognizedFoods('[{"name":"坏数据","quantity":0}]'), []);
 });
 
+test('parseRecognizedFoods accepts multimodal blocks, wrapped arrays, aliases, and name-only fallback', () => {
+  assert.deepEqual(parseRecognizedFoods([{ type: 'text', text: '[{"name":"苹果","quantity":2,"unit":"个"}]' }]), [
+    { name: '苹果', quantity: 2, unit: '个' }
+  ]);
+  assert.deepEqual(parseRecognizedFoods({ foods: [{ '食材': '牛肉', '数量': 1, '单位': '包' }] }), [
+    { name: '牛肉', quantity: 1, unit: '包' }
+  ]);
+  assert.deepEqual(parseRecognizedFoods('西红柿'), [
+    { name: '西红柿', quantity: 1, unit: '个' }
+  ]);
+});
+
 test('consumeInventory uses earliest expiry batches and removes empty batches', () => {
   const inventory = [
     { id: 1, name: '鸡蛋', quantity: 0.5, unit: '个', expiryDate: '2026-06-20' },
