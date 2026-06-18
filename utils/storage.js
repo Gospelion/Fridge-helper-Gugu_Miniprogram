@@ -1,7 +1,7 @@
 // utils/storage.js
 const STORAGE_KEY = 'fridge_chef_data';
-const SCHEMA_VERSION = 2;
-const { clone, consumeInventory, migrateData } = require('./domain');
+const SCHEMA_VERSION = 3;
+const { clone, consumeInventory, migrateData, normalizeRecipes } = require('./domain');
 
 /**
  * 默认 Mock 数据
@@ -90,22 +90,88 @@ const defaultData = {
   ],
   diary: [],
   excludedIngredients: [],
-  newlyAddedIngredients: []
+  newlyAddedIngredients: [],
+  favoriteRecipes: [],
+  preferences: { servings: 2, maxDifficulty: '困难', expiryReminderEnabled: true },
+  reminderState: {}
 };
 
 let cache = null;
+let cloudSyncTimer = null;
 
-function saveData(data) {
+function canSyncCloud() {
+  return typeof wx !== 'undefined' && wx.cloud && typeof wx.cloud.callFunction === 'function';
+}
+
+function scheduleCloudPush() {
+  if (!canSyncCloud()) return;
+  if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(async () => {
+    cloudSyncTimer = null;
+    try {
+      await wx.cloud.callFunction({
+        name: 'syncData',
+        data: { action: 'push', data: getCloudSnapshot() }
+      });
+    } catch (error) {
+      console.warn('云端同步失败，将在下次修改时重试');
+    }
+  }, 500);
+}
+
+function getCloudSnapshot() {
+  const snapshot = getSnapshot();
+  snapshot.diary = snapshot.diary.map((entry) => ({ ...entry, imageList: [] }));
+  return snapshot;
+}
+
+function saveData(data, options = {}) {
+  if (options.touch !== false) data.updatedAt = Date.now();
   cache = data;
   wx.setStorageSync(STORAGE_KEY, data);
+  if (options.sync !== false) scheduleCloudPush();
 }
 
 function initialize() {
   if (cache) return clone(cache);
   const raw = wx.getStorageSync(STORAGE_KEY) || null;
   const migrated = migrateData(raw, defaultData, SCHEMA_VERSION);
-  saveData(migrated);
+  migrated.recipes = normalizeRecipes(migrated.recipes);
+  if (!migrated.updatedAt) migrated.updatedAt = Date.now();
+  saveData(migrated, { sync: false, touch: false });
   return clone(migrated);
+}
+
+async function syncWithCloud() {
+  if (!canSyncCloud()) return { synced: false, reason: 'unavailable' };
+  const local = getSnapshot();
+  const response = await wx.cloud.callFunction({ name: 'syncData', data: { action: 'pull' } });
+  if (!response.result || response.result.success === false) {
+    throw new Error((response.result && response.result.error) || '云端读取失败');
+  }
+  const remote = response.result && response.result.data;
+
+  if (remote && Number(remote.updatedAt) > Number(local.updatedAt || 0)) {
+    const migrated = migrateData(remote, defaultData, SCHEMA_VERSION);
+    migrated.recipes = normalizeRecipes(migrated.recipes);
+    const localImages = new Map(local.diary.map((entry) => [entry.id, entry.imageList || []]));
+    migrated.diary = migrated.diary.map((entry) => ({
+      ...entry,
+      imageList: localImages.get(entry.id) || []
+    }));
+    cache = migrated;
+    wx.setStorageSync(STORAGE_KEY, migrated);
+    return { synced: true, source: 'cloud' };
+  }
+
+  const pushResponse = await wx.cloud.callFunction({
+    name: 'syncData',
+    data: { action: 'push', data: getCloudSnapshot() }
+  });
+  if (!pushResponse.result || pushResponse.result.success === false) {
+    throw new Error((pushResponse.result && pushResponse.result.error) || '云端写入失败');
+  }
+  return { synced: true, source: 'local' };
 }
 
 function getSnapshot() {
@@ -183,6 +249,40 @@ function getRecipes() {
   return getSnapshot().recipes;
 }
 
+function getPreferences() {
+  return getSnapshot().preferences;
+}
+
+function updatePreferences(patch) {
+  mutateData((data) => {
+    data.preferences = { ...data.preferences, ...patch };
+  });
+}
+
+function getFavoriteRecipes() {
+  return getSnapshot().favoriteRecipes;
+}
+
+function toggleFavoriteRecipe(name) {
+  return mutateData((data) => {
+    const favorites = new Set(data.favoriteRecipes || []);
+    if (favorites.has(name)) favorites.delete(name);
+    else favorites.add(name);
+    data.favoriteRecipes = Array.from(favorites);
+    return favorites.has(name);
+  });
+}
+
+function claimDailyExpiryReminder() {
+  return mutateData((data) => {
+    if (!data.preferences.expiryReminderEnabled) return false;
+    const today = formatDate(new Date());
+    if (data.reminderState.lastExpiryReminderDate === today) return false;
+    data.reminderState.lastExpiryReminderDate = today;
+    return true;
+  });
+}
+
 function getDiary() {
   return getSnapshot().diary.slice().sort((a, b) => b.createdAt - a.createdAt);
 }
@@ -198,7 +298,11 @@ function publishDiary(entry) {
     };
     data.inventory = consumption.inventory;
     data.diary.push(diaryEntry);
-    return { diaryEntry: clone(diaryEntry), consumedItems: clone(consumption.consumedItems) };
+    return {
+      diaryEntry: clone(diaryEntry),
+      consumedItems: clone(consumption.consumedItems),
+      shortages: clone(consumption.shortages)
+    };
   });
 }
 
@@ -268,6 +372,11 @@ module.exports = {
   updateItem,
   removeItem,
   getRecipes,
+  getPreferences,
+  updatePreferences,
+  getFavoriteRecipes,
+  toggleFavoriteRecipe,
+  claimDailyExpiryReminder,
   getDiary,
   publishDiary,
   removeDiaryEntry,
@@ -276,5 +385,6 @@ module.exports = {
   getExcludedIngredients,
   addExcludedIngredient,
   markNewlyAddedIngredients,
-  getNewlyAddedIngredients
+  getNewlyAddedIngredients,
+  syncWithCloud
 };

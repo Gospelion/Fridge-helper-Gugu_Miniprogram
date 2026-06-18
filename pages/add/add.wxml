@@ -104,6 +104,32 @@
   </view>
 </view>
 
+<!-- AI 识别确认 -->
+<view class="modal-mask {{showRecognitionReview ? 'active' : ''}}"></view>
+<view class="recognition-review {{showRecognitionReview ? 'active' : ''}}">
+  <view class="unit-selector-header">
+    <view>
+      <text class="unit-selector-title">确认识别结果</text>
+      <text class="review-subtitle">核对后再加入库存</text>
+    </view>
+    <view class="unit-selector-close" bindtap="closeRecognitionReview"><text>✕</text></view>
+  </view>
+  <scroll-view class="review-list" scroll-y="true">
+    <view class="review-row" wx:for="{{recognitionDraft}}" wx:key="name">
+      <input class="review-name" value="{{item.name}}" data-index="{{index}}" data-field="name" bindinput="onRecognitionFieldInput" />
+      <input class="review-quantity" type="digit" value="{{item.quantity}}" data-index="{{index}}" data-field="quantity" bindinput="onRecognitionFieldInput" />
+      <picker mode="selector" range="{{units}}" value="{{item.unitIndex}}" data-index="{{index}}" bindchange="onRecognitionUnitChange">
+        <view class="review-unit">{{item.unit}} ▼</view>
+      </picker>
+      <text class="review-remove" data-index="{{index}}" bindtap="removeRecognitionItem">删除</text>
+    </view>
+  </scroll-view>
+  <view class="review-actions">
+    <button class="review-cancel" bindtap="closeRecognitionReview">取消</button>
+    <button class="btn-primary review-confirm" bindtap="confirmRecognitionItems">确认加入冰箱</button>
+  </view>
+</view>
+
 <!-- 单位选择器模态框 -->
 <view class="modal-mask {{showUnitSelector ? 'active' : ''}}" bindtap="closeUnitSelector"></view>
 <view class="unit-selector {{showUnitSelector ? 'active' : ''}}">

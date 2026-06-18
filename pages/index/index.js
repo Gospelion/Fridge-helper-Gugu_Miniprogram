@@ -11,6 +11,11 @@ Page({
     // 用于高亮新添加的食材
     newlyAddedIds: [],
     recommendedRecipes: [],
+    recommendationOffset: 0,
+    preferences: { servings: 2, maxDifficulty: '困难', expiryReminderEnabled: true },
+    servingOptions: [1, 2, 3, 4, 5, 6],
+    difficultyOptions: ['极简', '简单', '中等', '困难'],
+    categoryStats: [],
     categories: ['全部', '农产品', '蔬菜', '水果', '饮品/其他'],
     activeCategory: '全部',
     swipeOffsets: {},
@@ -40,6 +45,11 @@ Page({
       this.getTabBar().setData({
         selected: 0
       });
+    }
+    const syncReady = getApp().globalData.syncReady;
+    if (!this._cloudRefreshBound && syncReady) {
+      this._cloudRefreshBound = true;
+      syncReady.then(() => this.refreshPage()).catch(() => {});
     }
   },
 
@@ -77,9 +87,32 @@ Page({
    */
   onRefreshRecommend() {
     wx.showLoading({ title: '生成中...' });
+    this.setData({ recommendationOffset: this.data.recommendationOffset + 2 });
     this.refreshPage();
     wx.hideLoading();
     wx.showToast({ title: '已更新推荐', icon: 'success' });
+  },
+
+  onServingChange(e) {
+    const servings = this.data.servingOptions[Number(e.detail.value)] || 2;
+    storage.updatePreferences({ servings });
+    this.refreshPage();
+  },
+
+  onDifficultyChange(e) {
+    const maxDifficulty = this.data.difficultyOptions[Number(e.detail.value)] || '困难';
+    storage.updatePreferences({ maxDifficulty });
+    this.refreshPage();
+  },
+
+  onReminderChange(e) {
+    storage.updatePreferences({ expiryReminderEnabled: e.detail.value });
+    this.refreshPage();
+  },
+
+  onToggleFavorite(e) {
+    storage.toggleFavoriteRecipe(e.currentTarget.dataset.name);
+    this.refreshPage();
   },
 
   /**
@@ -237,10 +270,25 @@ Page({
     const dashboard = {
       total: list.length,
       totalTypes: new Set(list.map(item => item.name)).size,
-      warning: decorated.filter(item => item.status === 'warning').length,
-      warningTypes: new Set(decorated.filter(item => item.status === 'warning').map(item => item.name)).size,
+      warning: decorated.filter(item => item.status === 'warning' || item.status === 'urgent').length,
+      warningTypes: new Set(decorated.filter(item => item.status === 'warning' || item.status === 'urgent').map(item => item.name)).size,
       expired: decorated.filter(item => item.status === 'expired').length,
       expiredTypes: new Set(decorated.filter(item => item.status === 'expired').map(item => item.name)).size
+    };
+    const categoryCounts = this.data.categories.slice(1).map((name) => ({
+      name,
+      count: list.filter((item) => item.category === name).length
+    }));
+    const inventoryCount = Math.max(1, list.length);
+    const categoryStats = categoryCounts.map((item) => ({
+      ...item,
+      percent: Math.round(item.count / inventoryCount * 100)
+    }));
+    const storedPreferences = storage.getPreferences();
+    const preferences = {
+      ...storedPreferences,
+      servingIndex: Math.max(0, this.data.servingOptions.indexOf(storedPreferences.servings)),
+      difficultyIndex: Math.max(0, this.data.difficultyOptions.indexOf(storedPreferences.maxDifficulty))
     };
 
     const filteredInventory = filterInventory(decorated, {
@@ -252,13 +300,30 @@ Page({
       inventory: decorated,
       filteredInventory,
       dashboard,
+      categoryStats,
+      preferences,
       newlyAddedIds,
       recommendedRecipes: buildRecommendations(
         snapshot.inventory,
         snapshot.recipes,
-        excludedIngredients
+        excludedIngredients,
+        2,
+        {
+          ...preferences,
+          favoriteRecipes: storage.getFavoriteRecipes(),
+          offset: this.data.recommendationOffset
+        }
       )
     });
+
+    const urgentCount = decorated.filter((item) => item.status === 'urgent' || item.status === 'expired').length;
+    if (urgentCount && storage.claimDailyExpiryReminder()) {
+      wx.showModal({
+        title: '临期提醒',
+        content: `有 ${urgentCount} 批食材即将到期或已经过期，记得优先处理。`,
+        showCancel: false
+      });
+    }
   },
 
   /**
@@ -275,14 +340,15 @@ Page({
   },
 
   calcDaysLeft(expiryDate) {
-    if (!expiryDate) return 999;
+    if (!expiryDate) return null;
     const now = new Date();
     const expire = new Date(expiryDate);
     const diff = expire.getTime() - now.getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return Number.isNaN(diff) ? null : Math.ceil(diff / (1000 * 60 * 60 * 24));
   },
 
   getStatus(daysLeft) {
+    if (daysLeft === null) return 'unset';
     if (daysLeft < 0) return 'expired';
     if (daysLeft <= 1) return 'urgent';
     if (daysLeft <= 3) return 'warning';
@@ -293,6 +359,9 @@ Page({
    * 根据剩余天数返回过期信息
    */
   getExpiryInfo(daysLeft) {
+    if (daysLeft === null) {
+      return { expiryLabel: '未设置保质期', expiryStatusClass: 'expiry-unset' };
+    }
     if (daysLeft < 0) {
       return { expiryLabel: `🗑️ 已过期 ${Math.abs(daysLeft)} 天`, expiryStatusClass: 'expiry-expired' };
     }
@@ -362,7 +431,7 @@ Page({
 
     // 计算距离过期天数
     const daysLeft = this.calcDaysLeft(item.expiryDate);
-    const expiryDays = daysLeft > 0 ? String(daysLeft) : '0';
+    const expiryDays = daysLeft === null ? '' : (daysLeft > 0 ? String(daysLeft) : '0');
 
     // 查找单位索引
     const unitIndex = this.data.units.indexOf(unit || '个');

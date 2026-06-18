@@ -680,3 +680,14 @@
 .fab-btn::after {
   border: none;
 }
+.recommend-preferences { display: flex; flex-wrap: wrap; gap: 12rpx; align-items: center; margin: 18rpx 0; }
+.preference-chip { display: inline-block; padding: 10rpx 18rpx; border-radius: 999rpx; background: #f4f7f2; color: #486044; font-size: 24rpx; }
+.reminder-control { display: flex; align-items: center; gap: 8rpx; margin-left: auto; color: #666; font-size: 24rpx; }
+.reminder-control switch { transform: scale(.72); }
+.recipe-favorite { margin-left: 12rpx; color: #f0a43c; font-size: 34rpx; }
+.category-chart-card { margin-top: 24rpx; }
+.category-chart-row { display: flex; align-items: center; gap: 16rpx; margin-top: 20rpx; }
+.category-chart-label { width: 130rpx; color: #555; font-size: 24rpx; }
+.category-chart-track { flex: 1; height: 18rpx; overflow: hidden; border-radius: 999rpx; background: #edf0eb; }
+.category-chart-bar { height: 100%; min-width: 4rpx; border-radius: 999rpx; background: #74a96b; }
+.category-chart-count { width: 72rpx; text-align: right; color: #777; font-size: 22rpx; }

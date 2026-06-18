@@ -27,7 +27,7 @@ function filterInventory(inventory, filters = {}) {
   });
 }
 
-function buildRecommendations(inventory, recipes, excludedNames = [], limit = 2) {
+function buildRecommendations(inventory, recipes, excludedNames = [], limit = 2, options = {}) {
   const excluded = new Set(excludedNames);
   const available = new Set(
     (inventory || [])
@@ -37,29 +37,71 @@ function buildRecommendations(inventory, recipes, excludedNames = [], limit = 2)
   if (!available.size) return [];
 
   const difficultyOrder = { '极简': 0, '简单': 1, '中等': 2, '困难': 3 };
-  return (recipes || [])
+  const maxDifficulty = options.maxDifficulty || '困难';
+  const maxDifficultyRank = difficultyOrder[maxDifficulty] ?? 3;
+  const favorites = new Set(options.favoriteRecipes || []);
+  const servingsFactor = Math.max(1, Number(options.servings) || 2) / 2;
+  const ranked = (recipes || [])
     .map((recipe) => {
       const ingredients = recipe.ingredients || [];
       const matchCount = ingredients.reduce(
-        (count, ingredient) => count + (available.has(ingredient) ? 1 : 0),
+        (count, ingredient) => count + (available.has(ingredient.name || ingredient) ? 1 : 0),
         0
       );
+      const ingredientNames = ingredients.map((ingredient) => ingredient.name || ingredient);
       return {
         ...recipe,
         matchCount,
         totalIngredients: ingredients.length,
         matchRate: ingredients.length ? matchCount / ingredients.length : 0,
-        ingredientsText: ingredients.join('、'),
-        ingredientsStr: JSON.stringify(ingredients)
+        ingredientsText: ingredients.map((ingredient) => {
+          if (typeof ingredient === 'string') return ingredient;
+          const adjusted = Math.round((Number(ingredient.quantity) || 1) * servingsFactor * 100) / 100;
+          return `${ingredient.name}${adjusted}${ingredient.unit || ''}`;
+        }).join('、'),
+        ingredientsStr: JSON.stringify(ingredientNames),
+        isFavorite: favorites.has(recipe.name)
       };
     })
-    .filter((recipe) => recipe.matchCount > 0)
+    .filter((recipe) => recipe.matchCount > 0 && (difficultyOrder[recipe.difficulty] ?? 99) <= maxDifficultyRank)
     .sort((a, b) =>
+      Number(b.isFavorite) - Number(a.isFavorite) ||
       b.matchRate - a.matchRate ||
       b.matchCount - a.matchCount ||
       (difficultyOrder[a.difficulty] ?? 99) - (difficultyOrder[b.difficulty] ?? 99)
-    )
-    .slice(0, limit);
+    );
+  if (!ranked.length) return [];
+  const offset = Math.abs(Number(options.offset) || 0) % ranked.length;
+  return ranked.concat(ranked).slice(offset, offset + Math.min(limit, ranked.length));
+}
+
+const DEFAULT_INGREDIENT_AMOUNTS = {
+  '鸡蛋': { quantity: 2, unit: '个' },
+  '西红柿': { quantity: 2, unit: '个' },
+  '番茄': { quantity: 2, unit: '个' },
+  '猪肉': { quantity: 300, unit: 'g' },
+  '牛肉': { quantity: 300, unit: 'g' },
+  '鸡肉': { quantity: 300, unit: 'g' },
+  '排骨': { quantity: 500, unit: 'g' },
+  '虾': { quantity: 500, unit: 'g' },
+  '鱼': { quantity: 1, unit: '份' }
+};
+
+function normalizeRecipes(recipes) {
+  return (recipes || []).map((recipe) => ({
+    ...recipe,
+    ingredients: (recipe.ingredients || []).map((ingredient) => {
+      if (ingredient && typeof ingredient === 'object') {
+        return {
+          name: String(ingredient.name || '').trim(),
+          quantity: Number(ingredient.quantity) || 1,
+          unit: normalizeUnit(ingredient.unit || '份')
+        };
+      }
+      const name = String(ingredient || '').trim();
+      return { name, ...(DEFAULT_INGREDIENT_AMOUNTS[name] || { quantity: 1, unit: '份' }) };
+    }).filter((ingredient) => ingredient.name)
+  }));
 }
 
 function migrateData(rawData, defaults, schemaVersion) {
@@ -72,7 +114,15 @@ function migrateData(rawData, defaults, schemaVersion) {
     recipes: Array.isArray(raw.recipes) && raw.recipes.length ? raw.recipes : fallback.recipes,
     diary: Array.isArray(raw.diary) ? raw.diary : [],
     excludedIngredients: Array.isArray(raw.excludedIngredients) ? raw.excludedIngredients : [],
-    newlyAddedIngredients: Array.isArray(raw.newlyAddedIngredients) ? raw.newlyAddedIngredients : []
+    newlyAddedIngredients: Array.isArray(raw.newlyAddedIngredients) ? raw.newlyAddedIngredients : [],
+    favoriteRecipes: Array.isArray(raw.favoriteRecipes) ? raw.favoriteRecipes : [],
+    preferences: {
+      servings: 2,
+      maxDifficulty: '困难',
+      expiryReminderEnabled: true,
+      ...(raw.preferences || {})
+    },
+    reminderState: raw.reminderState && typeof raw.reminderState === 'object' ? raw.reminderState : {}
   };
 }
 
@@ -142,26 +192,46 @@ function expiryTime(item) {
 function consumeInventory(inventory, requestedIngredients) {
   const nextInventory = clone(inventory || []);
   const consumedItems = [];
+  const shortages = [];
+  const weightFactors = { g: 1, kg: 1000, '斤': 500 };
 
   (requestedIngredients || []).forEach((request) => {
-    let remaining = Math.max(0, Number(request.quantity) || 0);
+    const requestUnit = request.unit || '';
+    const requestFactor = weightFactors[requestUnit] || 1;
+    let remaining = Math.max(0, Number(request.quantity) || 0) * requestFactor;
     const batches = nextInventory
-      .filter((item) => item.name === request.name && Number(item.quantity) > 0)
+      .filter((item) => {
+        if (item.name !== request.name || Number(item.quantity) <= 0) return false;
+        if (!requestUnit) return true;
+        const bothWeights = weightFactors[requestUnit] && weightFactors[item.unit];
+        return bothWeights || item.unit === requestUnit;
+      })
       .sort((a, b) => expiryTime(a) - expiryTime(b));
 
     batches.forEach((batch) => {
       if (remaining <= 0) return;
-      const available = Number(batch.quantity) || 0;
-      const used = Math.min(available, remaining);
-      batch.quantity = available - used;
-      remaining -= used;
-      consumedItems.push({ id: batch.id, name: batch.name, quantity: used, unit: batch.unit });
+      const batchFactor = weightFactors[batch.unit] || 1;
+      const availableInBase = (Number(batch.quantity) || 0) * batchFactor;
+      const usedInBase = Math.min(availableInBase, remaining);
+      const usedInBatchUnit = usedInBase / batchFactor;
+      batch.quantity = Number(batch.quantity) - usedInBatchUnit;
+      remaining -= usedInBase;
+      consumedItems.push({ id: batch.id, name: batch.name, quantity: usedInBatchUnit, unit: batch.unit });
     });
+
+    if (remaining > 0) {
+      shortages.push({
+        name: request.name,
+        quantity: remaining / requestFactor,
+        unit: requestUnit
+      });
+    }
   });
 
   return {
     inventory: nextInventory.filter((item) => Number(item.quantity) > 0),
-    consumedItems
+    consumedItems,
+    shortages
   };
 }
 
@@ -173,6 +243,7 @@ module.exports = {
   consumeInventory,
   filterInventory,
   migrateData,
+  normalizeRecipes,
   parseRecognizedFoods,
   recognizeCategory
 };

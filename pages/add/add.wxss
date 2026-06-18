@@ -181,6 +181,33 @@
   transform: translateY(0);
 }
 
+.recognition-review {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1001;
+  max-height: 75vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #ffffff;
+  border-radius: 28rpx 28rpx 0 0;
+  transform: translateY(100%);
+  transition: transform 0.25s ease;
+}
+
+.recognition-review.active { transform: translateY(0); }
+.review-subtitle { display: block; margin-top: 6rpx; color: #999; font-size: 24rpx; }
+.review-list { max-height: 48vh; padding: 0 32rpx; box-sizing: border-box; }
+.review-row { display: flex; gap: 12rpx; align-items: center; padding: 18rpx 0; border-bottom: 1rpx solid #eee; }
+.review-name, .review-quantity, .review-unit { padding: 14rpx; background: #f7f7f7; border-radius: 10rpx; font-size: 26rpx; }
+.review-name { flex: 1; min-width: 0; }
+.review-quantity { width: 100rpx; }
+.review-unit { min-width: 80rpx; }
+.review-remove { color: #d9534f; font-size: 24rpx; }
+.review-actions { display: flex; gap: 20rpx; padding: 24rpx 32rpx; }
+.review-actions button { flex: 1; }
+.review-cancel { background: #f2f2f2; color: #555; }
+
 .unit-selector-header {
   display: flex;
   justify-content: space-between;

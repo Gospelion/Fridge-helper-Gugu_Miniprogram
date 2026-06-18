@@ -25,6 +25,8 @@ Page({
     categories: ['农产品', '蔬菜', '水果', '饮品/其他'],
     showUnitSelector: false,
     recognizedFood: "",
+    showRecognitionReview: false,
+    recognitionDraft: [],
     form: {
       name: '',
       quantity: '',
@@ -177,7 +179,7 @@ Page({
     }
 
     let fileID = '';
-    let addedCount = 0;
+    let recognizedCount = 0;
     let failureMessage = '';
     wx.showLoading({ title: '识别中', mask: true });
     try {
@@ -195,10 +197,15 @@ Page({
       const rawResult = response.result.result || '';
       const foods = parseRecognizedFoods(rawResult);
       if (!foods.length) throw new Error('未识别到有效食材');
-      const ids = storage.addItems(this.buildInventoryItems(foods));
-      storage.markNewlyAddedIngredients(ids);
-      addedCount = ids.length;
-      this.setData({ recognizedFood: rawResult });
+      recognizedCount = foods.length;
+      this.setData({
+        recognizedFood: rawResult,
+        recognitionDraft: foods.map((food) => ({
+          ...food,
+          unitIndex: Math.max(0, this.data.units.indexOf(food.unit))
+        })),
+        showRecognitionReview: true
+      });
     } catch (error) {
       console.error('识别失败:', error);
       failureMessage = error.message || '识别失败';
@@ -213,11 +220,48 @@ Page({
       wx.hideLoading();
     }
 
-    if (!addedCount) {
+    if (!recognizedCount) {
       wx.showToast({ title: failureMessage || '识别失败', icon: 'none' });
       return;
     }
-    wx.showToast({ title: `已添加 ${addedCount} 种`, icon: 'success', duration: 1500 });
+    wx.showToast({ title: `识别到 ${recognizedCount} 种`, icon: 'success' });
+  },
+
+  closeRecognitionReview() {
+    this.setData({ showRecognitionReview: false, recognitionDraft: [] });
+  },
+
+  onRecognitionFieldInput(e) {
+    const { index, field } = e.currentTarget.dataset;
+    this.setData({ [`recognitionDraft[${index}].${field}`]: e.detail.value });
+  },
+
+  onRecognitionUnitChange(e) {
+    const { index } = e.currentTarget.dataset;
+    const unitIndex = Number(e.detail.value) || 0;
+    this.setData({
+      [`recognitionDraft[${index}].unitIndex`]: unitIndex,
+      [`recognitionDraft[${index}].unit`]: this.data.units[unitIndex]
+    });
+  },
+
+  removeRecognitionItem(e) {
+    const { index } = e.currentTarget.dataset;
+    const recognitionDraft = this.data.recognitionDraft.filter((_, itemIndex) => itemIndex !== index);
+    this.setData({ recognitionDraft });
+    if (!recognitionDraft.length) this.closeRecognitionReview();
+  },
+
+  confirmRecognitionItems() {
+    const foods = parseRecognizedFoods(this.data.recognitionDraft);
+    if (!foods.length) {
+      wx.showToast({ title: '请保留至少一项有效食材', icon: 'none' });
+      return;
+    }
+    const ids = storage.addItems(this.buildInventoryItems(foods));
+    storage.markNewlyAddedIngredients(ids);
+    this.setData({ showRecognitionReview: false, recognitionDraft: [] });
+    wx.showToast({ title: `已添加 ${ids.length} 种`, icon: 'success', duration: 1500 });
     setTimeout(() => wx.navigateBack({ delta: 1 }), 1000);
   },
 

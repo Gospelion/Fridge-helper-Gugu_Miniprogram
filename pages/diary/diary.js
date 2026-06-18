@@ -32,6 +32,14 @@ Page({
         selected: 1
       });
     }
+    const syncReady = getApp().globalData.syncReady;
+    if (!this._cloudRefreshBound && syncReady) {
+      this._cloudRefreshBound = true;
+      syncReady.then(() => {
+        this.initRecipes(this.data.selectedRecipeName);
+        this.refreshDiary();
+      }).catch(() => {});
+    }
   },
 
   initRecipes(preferName) {
@@ -218,19 +226,19 @@ Page({
       customTitle.trim() ||
       (recipe ? recipe.name : '未命名料理');
 
-    const usedIngredients =
-      recipe && recipe.ingredients
-        ? recipe.ingredients.map((name) => ({
-            name,
-            quantity: 1
-          }))
-        : [];
+    const servingsFactor = Math.max(1, Number(storage.getPreferences().servings) || 2) / 2;
+    const usedIngredients = recipe && recipe.ingredients
+      ? recipe.ingredients.map((ingredient) => ({
+          ...ingredient,
+          quantity: Math.round(ingredient.quantity * servingsFactor * 100) / 100
+        }))
+      : [];
 
     let savedImages = [];
     wx.showLoading({ title: '正在保存', mask: true });
     try {
       savedImages = await this.persistImages(imageList);
-      storage.publishDiary({
+      const publishResult = storage.publishDiary({
         title: finalTitle,
         recipeName: recipe ? recipe.name : '',
         imageList: savedImages,
@@ -243,7 +251,11 @@ Page({
         selectedRecipeName: recipes[0]?.name || ''
       });
       this.refreshDiary();
-      wx.showToast({ title: '已记录并扣减库存', icon: 'success' });
+      const shortages = publishResult.shortages || [];
+      wx.showToast({
+        title: shortages.length ? `已记录，${shortages.length} 种库存不足` : '已记录并扣减库存',
+        icon: shortages.length ? 'none' : 'success'
+      });
     } catch (error) {
       console.error('保存日记失败:', error);
       this.removeSavedFiles(savedImages);

@@ -1,0 +1,7 @@
+{
+  "name": "sync-data",
+  "version": "1.0.0",
+  "dependencies": {
+    "wx-server-sdk": "^3.0.4"
+  }
+}

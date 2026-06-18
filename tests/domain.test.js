@@ -6,6 +6,7 @@ const {
   consumeInventory,
   filterInventory,
   migrateData,
+  normalizeRecipes,
   parseRecognizedFoods
 } = require('../utils/domain');
 
@@ -78,4 +79,29 @@ test('consumeInventory only records available quantity when stock is insufficien
   );
   assert.equal(result.consumedItems[0].quantity, 0.25);
   assert.deepEqual(result.inventory, []);
+  assert.deepEqual(result.shortages, [{ name: '鸡蛋', quantity: 0.75, unit: '' }]);
+});
+
+test('consumeInventory converts kg, g, and jin while keeping batch units', () => {
+  const result = consumeInventory(
+    [
+      { id: 1, name: '牛肉', quantity: 0.2, unit: 'kg', expiryDate: '2026-06-18' },
+      { id: 2, name: '牛肉', quantity: 1, unit: '斤', expiryDate: '2026-06-19' }
+    ],
+    [{ name: '牛肉', quantity: 300, unit: 'g' }]
+  );
+  assert.deepEqual(result.consumedItems.map((item) => [item.id, item.quantity, item.unit]), [
+    [1, 0.2, 'kg'],
+    [2, 0.2, '斤']
+  ]);
+  assert.equal(result.inventory[0].quantity, 0.8);
+  assert.deepEqual(result.shortages, []);
+});
+
+test('normalizeRecipes upgrades legacy ingredient names to quantities and units', () => {
+  const recipes = normalizeRecipes([{ name: '番茄炒蛋', ingredients: ['鸡蛋', '西红柿'] }]);
+  assert.deepEqual(recipes[0].ingredients, [
+    { name: '鸡蛋', quantity: 2, unit: '个' },
+    { name: '西红柿', quantity: 2, unit: '个' }
+  ]);
 });

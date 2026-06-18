@@ -23,7 +23,7 @@ test('storage migrates once, batches writes, and publishes diary atomically', ()
   const storage = require('../utils/storage');
 
   const initialized = storage.initialize();
-  assert.equal(initialized.schemaVersion, 2);
+  assert.equal(initialized.schemaVersion, 3);
   assert.ok(initialized.recipes.length > 0);
   assert.equal(writeCount, 1);
 

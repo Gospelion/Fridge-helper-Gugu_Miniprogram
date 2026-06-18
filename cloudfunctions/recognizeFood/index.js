@@ -6,7 +6,7 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 exports.main = async (event) => {
   try {
     const { fileID } = event
-    console.log("收到 fileID:", fileID)
+    const apiKey = process.env.DASHSCOPE_API_KEY
 
     if (!fileID) {
       return { 
@@ -15,8 +15,15 @@ exports.main = async (event) => {
       }
     }
 
+    if (!apiKey) {
+      console.error("DASHSCOPE_API_KEY is not configured")
+      return {
+        success: false,
+        error: "AI 服务尚未配置"
+      }
+    }
+
     // 获取可访问临时 URL
-    console.log("获取图片临时 URL...")
     const tempFileRes = await cloud.getTempFileURL({
       fileList: [fileID]
     })
@@ -29,18 +36,13 @@ exports.main = async (event) => {
       }
     }
 
-    console.log("临时 URL:", tempFileURL)
-
     // 下载图片并转为 base64
-    console.log("下载图片...")
     const downloadRes = await axios.get(tempFileURL, {
       responseType: 'arraybuffer'
     })
     const base64Image = Buffer.from(downloadRes.data).toString('base64')
-    console.log("图片 base64 长度:", base64Image.length)
 
     // 调用通义千问多模态 API（标准 OpenAI 兼容格式）
-    console.log("调用 AI API...")
     const res = await axios.post(
       "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
       {
@@ -88,18 +90,14 @@ exports.main = async (event) => {
       },
       {
         headers: {
-          Authorization: 'Bearer sk-7a65b36beb914cc78a88157a22bc7ebd',
+          Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
         timeout: 30000
       }
     )
 
-    console.log("API 响应状态:", res.status)
-    console.log("API 响应数据:", JSON.stringify(res.data, null, 2))
-
     const result = res.data?.choices?.[0]?.message?.content || ""
-    console.log("识别结果:", result)
 
     if (!result) {
       return {
@@ -117,8 +115,7 @@ exports.main = async (event) => {
     console.error("云函数执行出错:", e)
     return {
       success: false,
-      error: e.message || "未知错误",
-      stack: e.stack
+      error: "识别服务暂时不可用，请稍后重试"
     }
   }
 }
