@@ -1,5 +1,6 @@
 // pages/diary/diary.js
 const storage = require('../../utils/storage');
+const { getServingFactor } = require('../../utils/domain');
 
 Page({
   data: {
@@ -277,7 +278,7 @@ Page({
       customTitle.trim() ||
       (recipe ? recipe.name : '未命名料理');
 
-    const servingsFactor = Math.max(1, Number(storage.getPreferences().servings) || 2) / 2;
+    const servingsFactor = getServingFactor(storage.getPreferences().servings);
     const usedIngredients = recipe && recipe.ingredients
       ? recipe.ingredients.map((ingredient) => ({
           ...ingredient,

@@ -23,6 +23,19 @@
         <image class="recommend-refresh" src="/assets/refresh.png" mode="aspectFit" bindtap="onRefreshRecommend" />
       </view>
 
+      <view class="recommend-settings">
+        <picker mode="selector" range="{{servingOptions}}" value="{{preferences.servingIndex}}" bindchange="onServingChange">
+          <view class="setting-chip">{{preferences.servings}} 人份</view>
+        </picker>
+        <picker mode="selector" range="{{difficultyOptions}}" value="{{preferences.difficultyIndex}}" bindchange="onDifficultyChange">
+          <view class="setting-chip">最高 {{preferences.maxDifficulty}}</view>
+        </picker>
+        <view class="reminder-setting">
+          <text>临期提醒</text>
+          <switch checked="{{preferences.expiryReminderEnabled}}" bindchange="onReminderChange" color="#292722" />
+        </view>
+      </view>
+
       <block wx:if="{{recommendedRecipes.length > 0}}">
         <view class="recommend-list">
           <view class="recommend-item" wx:for="{{recommendedRecipes}}" wx:key="name">
@@ -37,8 +50,12 @@
                 <text class="recipe-name">{{item.name}}</text>
                 <text class="recipe-meta">难度：{{item.difficulty}}</text>
                 <text class="recipe-meta recipe-ingredients">用到：{{item.ingredientsText}}</text>
+                <text class="recipe-stock {{item.hasEnoughStock ? 'recipe-stock-ready' : 'recipe-stock-missing'}}">{{item.stockText}}</text>
               </view>
-              <button class="recommend-btn" data-name="{{item.name}}" catchtap="goDiaryWithRecipe">记录</button>
+              <view class="recommend-actions">
+                <button class="favorite-btn {{item.isFavorite ? 'favorite-btn-active' : ''}}" data-name="{{item.name}}" catchtap="onToggleFavorite">{{item.isFavorite ? '已收藏' : '收藏'}}</button>
+                <button class="recommend-btn" data-name="{{item.name}}" catchtap="goDiaryWithRecipe">记录</button>
+              </view>
             </view>
           </view>
         </view>
@@ -60,6 +77,7 @@
           <view class="dashboard-number-row">
             <text class="dashboard-value">{{dashboard.total}}</text><text class="dashboard-unit">件</text>
           </view>
+          <text class="dashboard-detail">{{dashboard.totalTypes}} 种食材</text>
         </view>
         <view class="dashboard-divider"></view>
         <view class="dashboard-item dashboard-warning dashboard-link" bindtap="goExpiryDetail" data-type="warning" hover-class="dashboard-link-hover">
@@ -73,6 +91,17 @@
           <text class="dashboard-label">已过期</text>
           <view class="dashboard-number-row">
             <text class="dashboard-value">{{dashboard.expired}}</text><text class="dashboard-unit">件</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{dashboard.total}}" class="category-distribution">
+        <view class="category-stat" wx:for="{{categoryStats}}" wx:key="name">
+          <view class="category-stat-label">
+            <text>{{item.name}}</text>
+            <text>{{item.count}} 批 · {{item.percent}}%</text>
+          </view>
+          <view class="category-stat-track">
+            <view class="category-stat-fill category-stat-fill-{{index}}" style="width: {{item.percent}}%;"></view>
           </view>
         </view>
       </view>

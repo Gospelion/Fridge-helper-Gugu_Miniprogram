@@ -27,6 +27,15 @@ App({
       console.warn('云端数据暂时不可用，当前继续使用本地数据');
     });
 
+    if (typeof wx.onNetworkStatusChange === 'function') {
+      wx.onNetworkStatusChange(({ isConnected }) => {
+        if (!isConnected) return;
+        storage.retryCloudSync().catch(() => {
+          console.warn('网络恢复后同步仍未成功，将继续使用本地数据');
+        });
+      });
+    }
+
   },
 
   loadExtraLightFont() {

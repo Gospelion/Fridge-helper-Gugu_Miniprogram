@@ -111,3 +111,28 @@ test('schema migration removes only the exact legacy mock inventory', () => {
 
   delete global.wx;
 });
+
+test('cloud sync rejects business-level push failures', async () => {
+  let stored = {
+    schemaVersion: 4,
+    inventory: [{ id: 1, name: '苹果', quantity: 1, unit: '个' }],
+    updatedAt: 200
+  };
+  global.wx = {
+    getStorageSync: () => stored,
+    setStorageSync: (key, value) => { stored = JSON.parse(JSON.stringify(value)); },
+    cloud: {
+      callFunction: async (request) => request.data.action === 'pull'
+        ? { result: { success: true, data: { ...stored, updatedAt: 100 } } }
+        : { result: { success: false, error: '写入被拒绝' } }
+    }
+  };
+
+  const storagePath = require.resolve('../utils/storage');
+  delete require.cache[storagePath];
+  const storage = require('../utils/storage');
+  storage.initialize();
+  await assert.rejects(storage.syncWithCloud(), /写入被拒绝/);
+
+  delete global.wx;
+});

@@ -3,11 +3,13 @@ const assert = require('node:assert/strict');
 
 const {
   buildRecommendations,
+  calcDaysLeft,
   consumeInventory,
   filterInventory,
   migrateData,
   normalizeRecipes,
-  parseRecognizedFoods
+  parseRecognizedFoods,
+  getServingFactor
 } = require('../utils/domain');
 
 test('filterInventory combines category and search filters', () => {
@@ -32,6 +34,35 @@ test('buildRecommendations excludes muted ingredients and ranks matches', () => 
   assert.equal(buildRecommendations(inventory, recipes)[0].name, '番茄炒蛋');
   assert.deepEqual(buildRecommendations(inventory, recipes, ['鸡蛋']).map((item) => item.name), ['番茄炒蛋']);
   assert.deepEqual(buildRecommendations([], recipes), []);
+});
+
+test('recommendations scale one serving correctly and report stock shortages', () => {
+  const recipes = [{
+    name: '番茄炒蛋',
+    difficulty: '简单',
+    ingredients: [
+      { name: '鸡蛋', quantity: 2, unit: '个' },
+      { name: '西红柿', quantity: 2, unit: '个' }
+    ]
+  }];
+  const [recipe] = buildRecommendations(
+    [{ name: '鸡蛋', quantity: 1, unit: '个' }, { name: '西红柿', quantity: 0.5, unit: '个' }],
+    recipes,
+    [],
+    2,
+    { servings: 1 }
+  );
+  assert.equal(getServingFactor(1), 0.5);
+  assert.equal(recipe.ingredientsText, '鸡蛋1个、西红柿1个');
+  assert.equal(recipe.hasEnoughStock, false);
+  assert.deepEqual(recipe.missingIngredients, ['西红柿']);
+});
+
+test('expiry dates are compared as local calendar days', () => {
+  const earlyMorning = new Date(2026, 5, 22, 6, 30);
+  assert.equal(calcDaysLeft('2026-06-22', earlyMorning), 0);
+  assert.equal(calcDaysLeft('2026-06-23', earlyMorning), 1);
+  assert.equal(calcDaysLeft('', earlyMorning), null);
 });
 
 test('migrateData preserves user records and fills missing collections idempotently', () => {

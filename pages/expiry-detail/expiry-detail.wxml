@@ -1,26 +1,72 @@
-<image src="/assets/background.jpg" class="bg-image" mode="aspectFill" />
+<view class="paper-canvas"></view>
+<image src="/assets/background.jpg" class="paper-texture" mode="aspectFill" />
 
-<view class="page">
-  <view class="summary {{type}}">
-    <text class="summary-title">{{title}}</text>
-    <text class="summary-count">共 {{items.length}} 批</text>
+<scroll-view class="page" scroll-y="true" enhanced="true" show-scrollbar="false">
+  <view class="hero section-enter">
+    <view class="nav-row">
+      <view class="back-button" bindtap="goBack" hover-class="back-button-hover" aria-label="返回">
+        <text class="back-icon">‹</text>
+        <text class="back-text">库存</text>
+      </view>
+      <text class="hero-eyebrow">EXPIRY STATUS</text>
+    </view>
+    <text class="hero-title">{{title}}</text>
+    <view class="hero-summary">
+      <text>{{summaryText}}</text>
+      <text class="hero-count {{type}}">{{items.length}} 批待处理</text>
+    </view>
   </view>
 
-  <view wx:if="{{items.length}}" class="detail-list">
-    <view class="detail-card" wx:for="{{items}}" wx:key="id">
-      <view class="detail-main">
-        <text class="item-name">{{item.name}}</text>
-        <text class="item-quantity">{{item.quantity}}{{item.unit}}</text>
+  <view class="surface-shell section-enter section-delay-1">
+    <view class="surface-core overview-card">
+      <view class="overview-status {{type}}">
+        <text class="overview-label">{{type === 'expired' ? '已超过保质期' : '优先使用'}}</text>
+        <view class="overview-number-row">
+          <text class="overview-number">{{items.length}}</text>
+          <text class="overview-unit">批</text>
+        </view>
       </view>
-      <view class="detail-meta">
-        <text class="expiry-label {{type}}">{{item.expiryLabel}}</text>
-        <text class="expiry-date">到期日 {{item.expiryDate}}</text>
+      <view class="overview-divider"></view>
+      <view class="overview-copy">
+        <text class="overview-title">{{overviewTitle}}</text>
+        <text class="overview-desc">{{overviewDesc}}</text>
       </view>
     </view>
   </view>
 
-  <view wx:else class="empty-state">
-    <text class="empty-title">暂无{{title}}</text>
-    <text class="empty-desc">当前库存状态很好，继续保持</text>
+  <view class="surface-shell section-enter section-delay-2">
+    <view class="surface-core list-card">
+      <view class="section-header">
+        <view>
+          <text class="section-title">食材明细</text>
+          <text class="section-sub">按到期时间从近到远排列</text>
+        </view>
+        <text class="section-count">{{items.length}} 批</text>
+      </view>
+
+      <view wx:if="{{items.length}}" class="detail-list">
+        <view class="detail-card {{item.categoryBgClass}}" wx:for="{{items}}" wx:key="id">
+          <view class="detail-copy">
+            <text class="item-name">{{item.name}}</text>
+            <text class="expiry-label {{item.expiryStatusClass}}">{{item.expiryLabel}}</text>
+          </view>
+          <view class="detail-meta">
+            <text class="item-quantity">{{item.quantity}}{{item.unit}}</text>
+            <text class="item-category">{{item.category || '饮品/其他'}}</text>
+          </view>
+          <view class="date-row">
+            <text>到期日</text>
+            <text class="expiry-date">{{item.expiryDate}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:else class="empty-state">
+        <image class="empty-state-image" src="/assets/empty-fridge.png" mode="aspectFit" />
+        <text class="empty-state-title">暂无{{title}}</text>
+        <text class="empty-state-desc">{{emptyDesc}}</text>
+      </view>
+    </view>
   </view>
-</view>
+  <view class="page-spacer"></view>
+</scroll-view>

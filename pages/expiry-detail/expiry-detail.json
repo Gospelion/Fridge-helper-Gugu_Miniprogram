@@ -1,3 +1,7 @@
 {
-  "navigationBarTitleText": "临期明细"
+  "navigationStyle": "custom",
+  "navigationBarTitleText": "临期明细",
+  "backgroundColor": "#F2EBDD",
+  "backgroundTextStyle": "dark",
+  "usingComponents": {}
 }

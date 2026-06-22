@@ -27,6 +27,27 @@ function filterInventory(inventory, filters = {}) {
   });
 }
 
+function getServingFactor(servings) {
+  const normalized = Number(servings) || 2;
+  return Math.max(0.5, normalized / 2);
+}
+
+function parseLocalDate(dateValue) {
+  if (dateValue instanceof Date) return new Date(dateValue.getTime());
+  const match = String(dateValue || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date(dateValue);
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function calcDaysLeft(expiryDate, now = new Date()) {
+  if (!expiryDate) return null;
+  const expire = parseLocalDate(expiryDate);
+  if (Number.isNaN(expire.getTime())) return null;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(expire.getFullYear(), expire.getMonth(), expire.getDate());
+  return Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+}
+
 function buildRecommendations(inventory, recipes, excludedNames = [], limit = 2, options = {}) {
   const excluded = new Set(excludedNames);
   const available = new Set(
@@ -40,7 +61,7 @@ function buildRecommendations(inventory, recipes, excludedNames = [], limit = 2,
   const maxDifficulty = options.maxDifficulty || '困难';
   const maxDifficultyRank = difficultyOrder[maxDifficulty] ?? 3;
   const favorites = new Set(options.favoriteRecipes || []);
-  const servingsFactor = Math.max(1, Number(options.servings) || 2) / 2;
+  const servingsFactor = getServingFactor(options.servings);
   const ranked = (recipes || [])
     .map((recipe) => {
       const ingredients = recipe.ingredients || [];
@@ -49,18 +70,33 @@ function buildRecommendations(inventory, recipes, excludedNames = [], limit = 2,
         0
       );
       const ingredientNames = ingredients.map((ingredient) => ingredient.name || ingredient);
+      const adjustedIngredients = ingredients.map((ingredient) => {
+        const normalized = typeof ingredient === 'string'
+          ? { name: ingredient, quantity: 1, unit: '' }
+          : ingredient;
+        return {
+          ...normalized,
+          quantity: Math.round((Number(normalized.quantity) || 1) * servingsFactor * 100) / 100
+        };
+      });
+      const stockCheck = consumeInventory(
+        (inventory || []).filter((item) => !excluded.has(item.name)),
+        adjustedIngredients
+      );
+      const missingNames = stockCheck.shortages.map((item) => item.name);
       return {
         ...recipe,
         matchCount,
         totalIngredients: ingredients.length,
         matchRate: ingredients.length ? matchCount / ingredients.length : 0,
-        ingredientsText: ingredients.map((ingredient) => {
-          if (typeof ingredient === 'string') return ingredient;
-          const adjusted = Math.round((Number(ingredient.quantity) || 1) * servingsFactor * 100) / 100;
-          return `${ingredient.name}${adjusted}${ingredient.unit || ''}`;
-        }).join('、'),
+        ingredientsText: adjustedIngredients.map((ingredient) =>
+          `${ingredient.name}${ingredient.quantity}${ingredient.unit || ''}`
+        ).join('、'),
         ingredientsStr: JSON.stringify(ingredientNames),
-        isFavorite: favorites.has(recipe.name)
+        isFavorite: favorites.has(recipe.name),
+        hasEnoughStock: missingNames.length === 0,
+        missingIngredients: missingNames,
+        stockText: missingNames.length ? `缺少：${missingNames.join('、')}` : '库存充足'
       };
     })
     .filter((recipe) => recipe.matchCount > 0 && (difficultyOrder[recipe.difficulty] ?? 99) <= maxDifficultyRank)
@@ -207,7 +243,7 @@ function recognizeCategory(name) {
 
 function expiryTime(item) {
   if (!item.expiryDate) return Number.POSITIVE_INFINITY;
-  const time = new Date(item.expiryDate).getTime();
+  const time = parseLocalDate(item.expiryDate).getTime();
   return Number.isNaN(time) ? Number.POSITIVE_INFINITY : time;
 }
 
@@ -261,11 +297,14 @@ module.exports = {
   ALL_CATEGORY,
   ALLOWED_UNITS,
   buildRecommendations,
+  calcDaysLeft,
   clone,
   consumeInventory,
   filterInventory,
+  getServingFactor,
   migrateData,
   normalizeRecipes,
   parseRecognizedFoods,
+  parseLocalDate,
   recognizeCategory
 };

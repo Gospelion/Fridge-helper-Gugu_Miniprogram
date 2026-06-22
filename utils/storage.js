@@ -75,6 +75,9 @@ const defaultData = {
 
 let cache = null;
 let cloudSyncTimer = null;
+let cloudSyncRetryDelay = 2000;
+let cloudDirty = false;
+let cloudConflict = false;
 
 const LEGACY_MOCK_ITEMS = [
   { id: 1, name: '鸡蛋', quantity: 6, unit: '个', expiryDate: '2026-03-10', category: '农产品' },
@@ -100,20 +103,36 @@ function canSyncCloud() {
   return typeof wx !== 'undefined' && wx.cloud && typeof wx.cloud.callFunction === 'function';
 }
 
-function scheduleCloudPush() {
+function scheduleCloudPush(delay = 500) {
   if (!canSyncCloud()) return;
   if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
   cloudSyncTimer = setTimeout(async () => {
     cloudSyncTimer = null;
+    const snapshot = getCloudSnapshot();
     try {
-      await wx.cloud.callFunction({
+      const response = await wx.cloud.callFunction({
         name: 'syncData',
-        data: { action: 'push', data: getCloudSnapshot() }
+        data: { action: 'push', data: snapshot }
       });
+      if (!response.result || response.result.success === false) {
+        const error = new Error(response.result?.error || '云端写入失败');
+        error.code = response.result?.code || 'SYNC_PUSH_FAILED';
+        throw error;
+      }
+      if (Number(cache?.updatedAt || 0) <= Number(snapshot.updatedAt || 0)) cloudDirty = false;
+      cloudConflict = false;
+      cloudSyncRetryDelay = 2000;
     } catch (error) {
-      console.warn('云端同步失败，将在下次修改时重试');
+      if (error.code === 'SYNC_CONFLICT') {
+        cloudConflict = true;
+        console.warn('云端存在较新的数据，本地修改已保留，请重新打开小程序完成同步');
+        return;
+      }
+      console.warn(`云端同步失败，将在 ${cloudSyncRetryDelay / 1000} 秒后重试`);
+      scheduleCloudPush(cloudSyncRetryDelay);
+      cloudSyncRetryDelay = Math.min(cloudSyncRetryDelay * 2, 30000);
     }
-  }, 500);
+  }, delay);
 }
 
 function getCloudSnapshot() {
@@ -126,7 +145,11 @@ function saveData(data, options = {}) {
   if (options.touch !== false) data.updatedAt = Date.now();
   cache = data;
   wx.setStorageSync(STORAGE_KEY, data);
-  if (options.sync !== false) scheduleCloudPush();
+  if (options.sync !== false) {
+    cloudDirty = true;
+    cloudConflict = false;
+    scheduleCloudPush();
+  }
 }
 
 function initialize() {
@@ -156,6 +179,8 @@ async function syncWithCloud() {
     }));
     cache = migrated;
     wx.setStorageSync(STORAGE_KEY, migrated);
+    cloudDirty = false;
+    cloudConflict = false;
     return { synced: true, source: 'cloud' };
   }
 
@@ -164,9 +189,27 @@ async function syncWithCloud() {
     data: { action: 'push', data: getCloudSnapshot() }
   });
   if (!pushResponse.result || pushResponse.result.success === false) {
-    throw new Error((pushResponse.result && pushResponse.result.error) || '云端写入失败');
+    const error = new Error((pushResponse.result && pushResponse.result.error) || '云端写入失败');
+    error.code = pushResponse.result?.code || 'SYNC_PUSH_FAILED';
+    throw error;
   }
+  cloudDirty = false;
+  cloudConflict = false;
+  cloudSyncRetryDelay = 2000;
   return { synced: true, source: 'local' };
+}
+
+function retryCloudSync() {
+  if (!canSyncCloud()) return Promise.resolve({ synced: false, reason: 'unavailable' });
+  if (cloudDirty && !cloudConflict) {
+    scheduleCloudPush(0);
+    return Promise.resolve({ synced: false, reason: 'push_scheduled' });
+  }
+  return syncWithCloud();
+}
+
+function getCloudSyncState() {
+  return { dirty: cloudDirty, conflict: cloudConflict };
 }
 
 function getSnapshot() {
@@ -381,5 +424,7 @@ module.exports = {
   addExcludedIngredient,
   markNewlyAddedIngredients,
   getNewlyAddedIngredients,
-  syncWithCloud
+  syncWithCloud,
+  retryCloudSync,
+  getCloudSyncState
 };

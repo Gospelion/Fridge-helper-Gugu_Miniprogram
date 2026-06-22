@@ -28,6 +28,17 @@ exports.main = async (event) => {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
       return { success: false, error: '数据格式无效' };
     }
+    try {
+      const current = await collection.doc(OPENID).get();
+      const remoteUpdatedAt = Number(current.data?.payload?.updatedAt || 0);
+      const localUpdatedAt = Number(payload.updatedAt || 0);
+      if (remoteUpdatedAt > localUpdatedAt) {
+        return { success: false, code: 'SYNC_CONFLICT', error: '云端存在较新的数据' };
+      }
+    } catch (error) {
+      const message = String(error && error.message || '');
+      if (!/not exist|not found|不存在/i.test(message)) throw error;
+    }
     await collection.doc(OPENID).set({
       data: {
         payload,

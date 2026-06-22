@@ -172,6 +172,37 @@ page {
   gap: 14rpx;
 }
 
+.recommend-settings {
+  margin: -4rpx 0 18rpx;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10rpx;
+}
+
+.setting-chip {
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(237, 232, 222, 0.8);
+  color: #625c53;
+  font-size: 20rpx;
+  line-height: 1;
+}
+
+.reminder-setting {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  color: #625c53;
+  font-size: 20rpx;
+}
+
+.reminder-setting switch {
+  transform: scale(0.68);
+  transform-origin: right center;
+}
+
 .recommend-item {
   width: calc(50% - 7rpx);
   min-width: 0;
@@ -228,6 +259,31 @@ page {
   max-width: 100%;
 }
 
+.recipe-stock {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 19rpx;
+  line-height: 1.4;
+}
+
+.recipe-stock-ready {
+  color: #557459;
+}
+
+.recipe-stock-missing {
+  color: #b87522;
+}
+
+.recommend-actions {
+  width: 100%;
+  margin-top: 14rpx;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8rpx;
+  box-sizing: border-box;
+}
+
 .recommend-btn,
 .compact-btn {
   margin: 14rpx 0 0;
@@ -254,14 +310,39 @@ page {
 }
 
 .recommend-btn {
-  width: 112rpx !important;
-  min-width: 112rpx !important;
-  max-width: 112rpx !important;
-  align-self: flex-start;
-  margin-right: 0 !important;
-  margin-left: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
   padding: 0 !important;
   line-height: 1 !important;
+}
+
+.favorite-btn {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 12rpx !important;
+  height: 54rpx;
+  min-height: 54rpx;
+  border-radius: 10rpx;
+  background: transparent;
+  border: 1rpx solid rgba(64, 55, 44, 0.16);
+  color: #746c62;
+  font-size: 19rpx;
+  line-height: 52rpx;
+  box-sizing: border-box;
+}
+
+.favorite-btn::after {
+  border: 0;
+}
+
+.favorite-btn-active {
+  background: #efe2c9;
+  color: #805d27;
+  border-color: rgba(128, 93, 39, 0.18);
 }
 
 .recommend-btn:active,
@@ -350,6 +431,48 @@ page {
   font-size: 25rpx;
   font-weight: 600;
 }
+
+.dashboard-detail {
+  display: block;
+  margin-top: 7rpx;
+  color: #958c80;
+  font-size: 18rpx;
+}
+
+.category-distribution {
+  margin: 20rpx 14rpx 4rpx;
+  padding-top: 18rpx;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx 20rpx;
+  border-top: 1rpx solid rgba(65, 55, 43, 0.08);
+}
+
+.category-stat-label {
+  margin-bottom: 7rpx;
+  display: flex;
+  justify-content: space-between;
+  color: #7a7268;
+  font-size: 18rpx;
+}
+
+.category-stat-track {
+  height: 7rpx;
+  overflow: hidden;
+  border-radius: 999rpx;
+  background: rgba(65, 55, 43, 0.08);
+}
+
+.category-stat-fill {
+  min-width: 2rpx;
+  height: 100%;
+  border-radius: inherit;
+  background: #8da384;
+}
+
+.category-stat-fill-1 { background: #a7b98f; }
+.category-stat-fill-2 { background: #c99a88; }
+.category-stat-fill-3 { background: #9ba397; }
 
 .dashboard-warning .dashboard-value,
 .dashboard-warning .dashboard-unit {

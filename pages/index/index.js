@@ -1,6 +1,6 @@
 // pages/index/index.js
 const storage = require('../../utils/storage');
-const { buildRecommendations, filterInventory } = require('../../utils/domain');
+const { buildRecommendations, calcDaysLeft, filterInventory } = require('../../utils/domain');
 
 Page({
   data: {
@@ -352,11 +352,7 @@ Page({
   },
 
   calcDaysLeft(expiryDate) {
-    if (!expiryDate) return null;
-    const now = new Date();
-    const expire = new Date(expiryDate);
-    const diff = expire.getTime() - now.getTime();
-    return Number.isNaN(diff) ? null : Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return calcDaysLeft(expiryDate);
   },
 
   getStatus(daysLeft) {
@@ -542,8 +538,9 @@ Page({
     }
 
     // 验证天数
-    const days = Number(expiryDays);
-    if (Number.isNaN(days) || days < 0) {
+    const hasExpiry = String(expiryDays).trim() !== '';
+    const days = hasExpiry ? Number(expiryDays) : null;
+    if (hasExpiry && (!Number.isFinite(days) || days < 0)) {
       wx.showToast({
         title: '天数需为非负数',
         icon: 'none'
@@ -552,8 +549,9 @@ Page({
     }
 
     // 计算过期日期
-    const now = new Date();
-    const expiryDate = storage.formatDate(storage.addDays(now, days));
+    const expiryDate = hasExpiry
+      ? storage.formatDate(storage.addDays(new Date(), days))
+      : '';
 
     // 更新食材
     const unit = this.data.units[unitIndex] || '个';
