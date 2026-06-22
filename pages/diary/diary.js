@@ -27,6 +27,7 @@ Page({
     }
     this.initRecipes(pendingRecipeName || this.data.selectedRecipeName);
     this.refreshDiary();
+    this.migrateLegacyDiaryImages();
     // 更新自定义 tabBar 选中状态
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({
@@ -41,6 +42,13 @@ Page({
         this.initRecipes(this.data.selectedRecipeName);
         this.refreshDiary();
       }).catch(() => {});
+    }
+    const activeFridge = storage.getActiveFridge();
+    if (activeFridge && !this._fridgeRefreshInFlight) {
+      this._fridgeRefreshInFlight = storage.syncFridge(activeFridge.id)
+        .then(() => this.refreshDiary())
+        .catch(() => {})
+        .finally(() => { this._fridgeRefreshInFlight = null; });
     }
   },
 
@@ -215,12 +223,14 @@ Page({
   async checkDiaryContent(title, imagePaths) {
     const compressedPaths = [];
     const fileIDs = [];
+    let passed = false;
     try {
       for (let index = 0; index < imagePaths.length; index += 1) {
         const compressedPath = await this.compressImage(imagePaths[index]);
         compressedPaths.push(compressedPath);
+        const fridgeId = storage.getActiveFridge()?.id || 'personal';
         const uploadResult = await wx.cloud.uploadFile({
-          cloudPath: `diary-security/${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}.jpg`,
+          cloudPath: `diary-shared/${fridgeId}/${Date.now()}-${index}-${Math.floor(Math.random() * 1000)}.jpg`,
           filePath: compressedPath
         });
         fileIDs.push(uploadResult.fileID);
@@ -247,15 +257,38 @@ Page({
         }
         throw error;
       }
-      return compressedPaths;
+      passed = true;
+      return { compressedPaths, fileIDs };
     } finally {
-      if (fileIDs.length) {
+      if (!passed && fileIDs.length) {
         try {
           await wx.cloud.deleteFile({ fileList: fileIDs });
         } catch (cleanupError) {
           console.warn('清理安全检测临时文件失败');
         }
       }
+    }
+  },
+
+  async migrateLegacyDiaryImages() {
+    if (this._migratingLegacyImages) return;
+    const entries = storage.getDiary().filter((entry) =>
+      (entry.imageList || []).some((path) => !String(path).startsWith('cloud://'))
+    );
+    if (!entries.length || !wx.cloud) return;
+    this._migratingLegacyImages = true;
+    try {
+      for (const entry of entries) {
+        try {
+          const result = await this.checkDiaryContent(entry.title, entry.imageList);
+          storage.updateDiaryImages(entry.id, result.fileIDs);
+        } catch (error) {
+          console.warn('历史日记照片迁移失败，将保留本地照片');
+        }
+      }
+      this.refreshDiary();
+    } finally {
+      this._migratingLegacyImages = false;
     }
   },
 
@@ -290,7 +323,7 @@ Page({
     wx.showLoading({ title: '安全检测中', mask: true });
     try {
       const checkedImages = await this.checkDiaryContent(finalTitle, imageList);
-      savedImages = await this.persistCompressedImages(checkedImages);
+      savedImages = checkedImages.fileIDs;
       const publishResult = storage.publishDiary({
         title: finalTitle,
         recipeName: recipe ? recipe.name : '',
@@ -311,7 +344,9 @@ Page({
       });
     } catch (error) {
       console.error('保存日记失败:', error);
-      this.removeSavedFiles(savedImages);
+      if (savedImages.length) {
+        wx.cloud.deleteFile({ fileList: savedImages }).catch(() => {});
+      }
       wx.showToast({ title: error.userMessage || '保存失败，请重试', icon: 'none' });
     } finally {
       wx.hideLoading();

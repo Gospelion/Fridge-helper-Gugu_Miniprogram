@@ -5,6 +5,8 @@ const { buildRecommendations, calcDaysLeft, filterInventory } = require('../../u
 Page({
   data: {
     inventory: [],
+    activeFridge: null,
+    syncState: { pendingCount: 0, conflictCount: 0 },
     filteredInventory: [],
     searchKey: '',
     showDeleteMode: false,
@@ -51,7 +53,39 @@ Page({
     if (!this._cloudRefreshBound && syncReady) {
       this._cloudRefreshBound = true;
       syncReady.then(() => this.refreshPage()).catch(() => {});
+      syncReady.then(() => this.promptNicknameIfNeeded()).catch(() => {});
     }
+    const activeFridge = storage.getActiveFridge();
+    if (activeFridge && !this._fridgeRefreshInFlight) {
+      this._fridgeRefreshInFlight = storage.syncFridge(activeFridge.id)
+        .then(() => this.refreshPage())
+        .catch(() => {})
+        .finally(() => { this._fridgeRefreshInFlight = null; });
+    }
+  },
+
+  promptNicknameIfNeeded() {
+    const profile = storage.getSnapshot().profile || {};
+    const fridge = storage.getActiveFridge();
+    if (profile.nicknameConfigured || !fridge || this._nicknamePromptOpen) return;
+    this._nicknamePromptOpen = true;
+    wx.showModal({
+      title: '设置家庭昵称',
+      content: '',
+      editable: true,
+      placeholderText: '例如：妈妈、阿明',
+      success: async ({ confirm, content }) => {
+        const nickname = String(content || '').trim();
+        if (!confirm || !nickname) return;
+        try {
+          await storage.updateMemberNickname(fridge.id, nickname);
+          this.refreshPage();
+        } catch (error) {
+          wx.showToast({ title: error.message || '昵称保存失败', icon: 'none' });
+        }
+      },
+      complete: () => { this._nicknamePromptOpen = false; }
+    });
   },
 
   onHide() {
@@ -125,6 +159,35 @@ Page({
     });
   },
 
+  onFridgeTap() {
+    const fridges = storage.getFridges();
+    const itemList = fridges.map((fridge) => fridge.name).concat('管理共享冰箱');
+    wx.showActionSheet({
+      itemList,
+      success: async ({ tapIndex }) => {
+        if (tapIndex === fridges.length) {
+          wx.navigateTo({ url: '/pages/fridge-manage/fridge-manage' });
+          return;
+        }
+        const selected = fridges[tapIndex];
+        if (!selected || selected.id === storage.getActiveFridge()?.id) return;
+        wx.showLoading({ title: '切换中', mask: true });
+        try {
+          await storage.switchFridge(selected.id);
+          this.refreshPage();
+        } catch (error) {
+          wx.showToast({ title: error.message || '切换失败', icon: 'none' });
+        } finally {
+          wx.hideLoading();
+        }
+      }
+    });
+  },
+
+  goSyncConflicts() {
+    wx.navigateTo({ url: '/pages/fridge-manage/fridge-manage?section=sync' });
+  },
+
   goExpiryDetail(e) {
     const type = e.currentTarget.dataset.type === 'expired' ? 'expired' : 'warning';
     wx.navigateTo({
@@ -178,6 +241,8 @@ Page({
   onFilterTap(e) {
     const { name } = e.currentTarget.dataset;
     this.setData({
+      activeFridge: storage.getActiveFridge(),
+      syncState: storage.getCloudSyncState(),
       activeCategory: name,
       filteredInventory: filterInventory(this.data.inventory, {
         searchKey: this.data.searchKey,

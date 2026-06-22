@@ -78,6 +78,36 @@ page {
   min-width: 0;
 }
 
+.fridge-context {
+  margin-bottom: 14rpx;
+  display: inline-flex;
+  align-items: center;
+  gap: 8rpx;
+  color: #756d62;
+  font-size: 20rpx;
+}
+
+.fridge-context-hover { opacity: 0.65; }
+.fridge-context-label { color: #a1988b; }
+.fridge-context-name { color: #4d4841; font-weight: 600; }
+.fridge-context-arrow { font-size: 28rpx; line-height: 1; }
+
+.sync-banner {
+  margin: -10rpx 0 22rpx;
+  padding: 16rpx 22rpx;
+  display: flex;
+  justify-content: space-between;
+  border-radius: 16rpx;
+  background: #e7eee2;
+  color: #56705a;
+  font-size: 21rpx;
+}
+
+.sync-banner-conflict {
+  background: #f4e5d4;
+  color: #9b5d2e;
+}
+
 .hero-title {
   display: block;
   color: #24231f;
@@ -380,7 +410,7 @@ page {
 }
 
 .dashboard-card {
-  padding: 20rpx 10rpx;
+  padding: 14rpx 10rpx;
 }
 
 .dashboard-row {
@@ -391,7 +421,7 @@ page {
 .dashboard-item {
   flex: 1;
   min-width: 0;
-  padding: 12rpx 4rpx;
+  padding: 10rpx 4rpx;
   text-align: center;
   border-radius: 14rpx;
   transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1), background-color 420ms cubic-bezier(0.32, 0.72, 0, 1);
@@ -432,16 +462,9 @@ page {
   font-weight: 600;
 }
 
-.dashboard-detail {
-  display: block;
-  margin-top: 7rpx;
-  color: #958c80;
-  font-size: 18rpx;
-}
-
 .category-distribution {
-  margin: 20rpx 14rpx 4rpx;
-  padding-top: 18rpx;
+  margin: 14rpx 14rpx 2rpx;
+  padding-top: 14rpx;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14rpx 20rpx;

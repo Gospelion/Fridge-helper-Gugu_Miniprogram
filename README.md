@@ -11,7 +11,8 @@
 - AI 识别：拍照后由通义千问视觉模型提取食材；用户确认、修改后才写入库存。
 - 烹饪日记：选择菜谱或自定义菜名，可保存照片，并按菜谱用量扣减库存。
 - 单位换算：菜谱扣减支持 `g`、`kg`、`斤`之间的重量换算，并优先消耗最早过期批次。
-- 数据同步：本地优先，联网后通过云函数按 OpenID 同步至微信云数据库。
+- 家庭共享：一个用户可加入多个冰箱，通过微信分享邀请成员共同维护库存和日记。
+- 数据同步：本地优先，离线操作联网后按记录同步；同一记录的并发修改由用户选择保留版本。
 
 ## 项目结构
 
@@ -20,14 +21,17 @@
 ├─ pages/
 │  ├─ index/                 # 库存、看板和推荐
 │  ├─ add/                   # 手动添加和 AI 识别确认
-│  └─ diary/                 # 烹饪日记
+│  ├─ diary/                 # 烹饪日记
+│  ├─ fridge-manage/         # 冰箱切换、邀请和成员管理
+│  └─ fridge-invite/         # 微信邀请确认
 ├─ utils/
 │  ├─ domain.js              # 推荐、识别解析、单位换算
-│  └─ storage.js             # 本地存储、迁移和云同步
+│  └─ storage.js             # 多冰箱缓存、离线队列和共享同步
 ├─ cloudfunctions/
 │  ├─ recognizeFood/         # AI 图片识别
 │  ├─ contentSecurity/       # 菜名与照片内容安全检测
-│  └─ syncData/              # 按 OpenID 同步用户数据
+│  ├─ fridgeAccess/          # 冰箱、邀请、成员和权限
+│  └─ fridgeSync/            # 事务化记录同步和冲突检测
 ├─ config/cloud.js           # 微信云环境 ID
 ├─ tests/                    # Node.js 领域测试
 ├─ PRIVACY.md
@@ -38,17 +42,18 @@
 
 1. 使用微信开发者工具导入仓库。
 2. 在 `config/cloud.js` 中填写目标微信云环境 ID。
-3. 创建云数据库集合 `fridge_user_data`。客户端无需直接读写该集合，数据通过 `syncData` 云函数访问。
-4. 上传并部署 `syncData`、`recognizeFood` 和 `contentSecurity`，选择“云端安装依赖”。
+3. 创建 `user_profiles`、`fridges`、`fridge_members`、`fridge_items`、`fridge_diaries`、`fridge_invites` 和 `fridge_operations` 集合，并设置为仅管理端可读写。
+4. 上传并部署 `fridgeAccess`、`fridgeSync`、`recognizeFood` 和 `contentSecurity`，选择“云端安装依赖”。
 5. 在 `recognizeFood` 云函数配置中添加环境变量 `DASHSCOPE_API_KEY`。
 6. 确认小程序已具备调用微信内容安全接口的权限，然后验证正常图片可以发布、风险内容会被阻止。
-7. 编译后分别验证手动添加、拍照识别确认、云同步、菜谱扣减和日记图片。
+7. 为 `fridge_members` 建立 `(openid, status)`、`(fridgeId, status)` 索引，为 `fridge_items` 和 `fridge_diaries` 建立 `(fridgeId, deleted)` 索引，为 `fridge_operations` 建立 `fridgeId` 索引。
+8. 使用两个微信账号验证分享邀请、离线修改、冲突处理、所有权转让和共享日记照片。
 
-> 安全提示：历史版本曾把 DashScope 密钥写入源码，该密钥已经轮换。当前密钥只允许配置在云函数环境变量中；后续如再次泄露，仍必须在控制台吊销，删除 Git 中的字符串不能使密钥失效。
+完整步骤见 [shared-fridge-qa.md](shared-fridge-qa.md)。
 
 ## 数据策略
 
-应用离线时继续使用 `wx.setStorageSync`。恢复联网后按 `updatedAt` 比较本地与云端版本，较新的版本成为同步源；失败写入会自动退避重试，服务端会拒绝旧快照覆盖新数据。云端文档 ID 由云函数从可信的 OpenID 生成，客户端不能指定其他用户。
+应用离线时继续使用 `wx.setStorageSync`，并为当前冰箱记录独立操作队列。联网后，云函数按成员权限提交操作；每次写入在事务中同时校验记录版本、递增冰箱 revision 并保存幂等操作日志。同一记录发生并发冲突时不会静默覆盖。
 
 AI 图片仅为识别临时上传，调用结束后会请求删除。更完整的数据处理说明见 [PRIVACY.md](PRIVACY.md)。正式发布前还应补充用户可操作的云端数据删除入口。
 
@@ -59,14 +64,13 @@ node tests\domain.test.js
 node tests\storage.test.js
 ```
 
-测试覆盖筛选、推荐、识别结果解析、数据迁移、单位换算、最早过期批次扣减和本地存储事务。微信 API、云函数和真机交互仍需在微信开发者工具中验证。
+测试覆盖筛选、推荐、识别结果解析、数据迁移、单位换算、最早过期批次扣减、共享 bootstrap、离线操作队列和版本冲突。微信 API、云函数和真机交互仍需在微信开发者工具中验证。
 
 ## 尚未实现
 
 - 后台定时推送式到期通知；当前提醒只在用户打开小程序时触发。
 - 菜谱价格数据库，因此暂不支持可靠的预算筛选。
 - 用户主动清除全部云端数据/注销入口。
-- 多人共享同一个家庭冰箱。
 
 ## License
 

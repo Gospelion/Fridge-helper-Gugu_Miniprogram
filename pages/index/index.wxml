@@ -4,6 +4,11 @@
 <scroll-view class="page" scroll-y="true" enhanced="true" show-scrollbar="false">
   <view class="hero section-enter">
     <view class="hero-copy">
+      <view class="fridge-context" bindtap="onFridgeTap" hover-class="fridge-context-hover">
+        <text class="fridge-context-label">当前冰箱</text>
+        <text class="fridge-context-name">{{activeFridge.name || '我的冰箱'}}</text>
+        <text class="fridge-context-arrow">›</text>
+      </view>
       <text class="hero-title">冰箱库存</text>
       <view class="hero-summary">
         <text>今天先处理</text>
@@ -14,6 +19,11 @@
     <view class="mascot-frame">
       <image src="/assets/hero-mascot.png" class="mascot-image" mode="aspectFill" />
     </view>
+  </view>
+
+  <view wx:if="{{syncState.pendingCount || syncState.conflictCount}}" class="sync-banner {{syncState.conflictCount ? 'sync-banner-conflict' : ''}}" bindtap="goSyncConflicts">
+    <text>{{syncState.conflictCount ? syncState.conflictCount + ' 项同步冲突待处理' : syncState.pendingCount + ' 项修改将在联网后同步'}}</text>
+    <text>查看 ›</text>
   </view>
 
   <view class="surface-shell recommend-shell section-enter section-delay-1">
@@ -77,7 +87,6 @@
           <view class="dashboard-number-row">
             <text class="dashboard-value">{{dashboard.total}}</text><text class="dashboard-unit">件</text>
           </view>
-          <text class="dashboard-detail">{{dashboard.totalTypes}} 种食材</text>
         </view>
         <view class="dashboard-divider"></view>
         <view class="dashboard-item dashboard-warning dashboard-link" bindtap="goExpiryDetail" data-type="warning" hover-class="dashboard-link-hover">

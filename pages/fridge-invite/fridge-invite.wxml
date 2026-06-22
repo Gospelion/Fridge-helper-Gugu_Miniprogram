@@ -1,0 +1,27 @@
+<view class="page">
+  <view class="invite-card" wx:if="{{loading}}">
+    <text class="status-title">正在读取邀请</text>
+    <text class="status-desc">稍等一下，正在确认家庭冰箱信息。</text>
+  </view>
+
+  <view class="invite-card" wx:elif="{{error}}">
+    <text class="status-label">INVITATION</text>
+    <text class="status-title">邀请无法使用</text>
+    <text class="status-desc">{{error}}</text>
+    <button class="secondary-button" bindtap="goHome">返回我的冰箱</button>
+  </view>
+
+  <view class="invite-card" wx:else>
+    <text class="status-label">FAMILY INVITATION</text>
+    <text class="fridge-name">{{invite.fridgeName}}</text>
+    <text class="status-desc">{{invite.ownerNickname}} 邀请你一起维护库存与料理日记。</text>
+
+    <view class="field">
+      <text class="field-label">你在这个家庭中的昵称</text>
+      <input class="field-input" maxlength="16" value="{{nickname}}" placeholder="例如：妈妈、阿明" bindinput="onNicknameInput" />
+    </view>
+
+    <button class="primary-button" bindtap="acceptInvite">加入这个冰箱</button>
+    <text class="privacy-note">加入后，家庭成员可以看到你对库存和日记的修改。</text>
+  </view>
+</view>

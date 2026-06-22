@@ -1,0 +1,59 @@
+<view class="page">
+  <view class="hero">
+    <text class="eyebrow">FAMILY FRIDGE</text>
+    <text class="title">共享冰箱</text>
+    <text class="subtitle">切换家庭空间，邀请成员一起维护库存。</text>
+  </view>
+
+  <view class="card">
+    <view class="section-head">
+      <text class="section-title">我的冰箱</text>
+      <button class="text-button" bindtap="createFridge">新建</button>
+    </view>
+    <view class="fridge-list">
+      <view class="fridge-row {{activeFridge.id === item.id ? 'active' : ''}}" wx:for="{{fridges}}" wx:key="id" data-id="{{item.id}}" bindtap="chooseFridge">
+        <view>
+          <text class="row-title">{{item.name}}</text>
+          <text class="row-meta">{{item.role === 'owner' ? '所有者' : '成员'}} · {{item.memberCount}} 人</text>
+        </view>
+        <text class="row-state">{{activeFridge.id === item.id ? '当前' : '切换'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{activeFridge}}">
+    <view class="section-head">
+      <text class="section-title">成员</text>
+      <button class="text-button" bindtap="editNickname">修改我的昵称</button>
+    </view>
+    <view class="member-row" wx:for="{{members}}" wx:key="memberId" data-id="{{item.memberId}}" bindtap="onMemberTap">
+      <view class="avatar">{{item.initial}}</view>
+      <view class="member-copy">
+        <text class="row-title">{{item.nickname}}{{item.isSelf ? '（我）' : ''}}</text>
+        <text class="row-meta">{{item.role === 'owner' ? '所有者' : '成员'}}</text>
+      </view>
+      <text wx:if="{{currentRole === 'owner' && !item.isSelf}}" class="row-state">管理</text>
+    </view>
+    <view class="actions" wx:if="{{currentRole === 'owner'}}">
+      <button wx:if="{{!inviteToken}}" class="primary-button" bindtap="prepareInvite">生成微信邀请</button>
+      <button wx:else class="primary-button" open-type="share">分享给家庭成员</button>
+      <button class="secondary-button" bindtap="renameFridge">修改冰箱名称</button>
+    </view>
+    <button class="danger-button" bindtap="leaveOrDelete">{{currentRole === 'owner' ? '删除这个冰箱' : '退出这个冰箱'}}</button>
+  </view>
+
+  <view id="sync-section" class="card" wx:if="{{conflicts.length}}">
+    <text class="section-title">同步冲突</text>
+    <text class="section-note">同一条记录在两台设备被修改，请选择保留哪一份。</text>
+    <view class="conflict-row" wx:for="{{conflicts}}" wx:key="opId">
+      <text class="row-title">{{item.local.name || item.local.title || '已删除的记录'}}</text>
+      <text wx:if="{{item.reason === 'rejected'}}" class="conflict-error">{{item.error}}</text>
+      <view class="conflict-actions">
+        <button data-id="{{item.opId}}" data-strategy="remote" bindtap="resolveConflict">{{item.reason === 'rejected' ? '丢弃本地修改' : '采用云端'}}</button>
+        <button wx:if="{{item.reason !== 'rejected'}}" data-id="{{item.opId}}" data-strategy="local" bindtap="resolveConflict">保留本地</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-space"></view>
+</view>
